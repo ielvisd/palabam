@@ -229,16 +229,39 @@ async def create_profile(request: ProfileRequest):
         profiler = StoryProfiler()
         analysis = profiler.analyze_transcript(request.transcript)
         
-        # TODO: Store profile in Supabase
-        # For now, return the analysis
-        # profile_id = await store_profile(request.student_id, analysis)
+        # Store profile in Supabase
+        from db import profiles as db_profiles
+        
+        if request.student_id:
+            profile_id = await db_profiles.create_profile(
+                student_id=request.student_id,
+                resonance_data=analysis['resonance_data'],
+                word_scores=analysis['word_scores']
+            )
+        else:
+            # If no student_id provided, create a temporary profile
+            # In production, this should require authentication
+            profile_id = "temp-id"
+            logger.warning("No student_id provided, using temporary profile ID")
+        
+        # Get recommended words from recommender
+        from . import recommender
+        recommender_instance = recommender.WordRecommender()
+        recommendations = await recommender_instance.recommend_words(
+            profile={
+                'word_scores': analysis['word_scores'],
+                'resonance_data': analysis['resonance_data']
+            },
+            count=7
+        )
+        recommended_words = [r['word'] for r in recommendations]
         
         return ProfileResponse(
-            profile_id="temp-id",  # Replace with actual ID from DB
+            profile_id=profile_id,
             word_scores=analysis['word_scores'],
             resonance_data=analysis['resonance_data'],
             vocabulary_level=analysis['vocabulary_level'],
-            recommended_words=[]  # Will be populated by recommender
+            recommended_words=recommended_words
         )
     except Exception as e:
         logger.error(f"Error creating profile: {e}")

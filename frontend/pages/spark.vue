@@ -183,11 +183,15 @@ const submitStory = async () => {
     processingProgress.value = 30
     processingStatus.value = 'Analyzing with AI...'
 
-    const response = await $fetch('/api/profile', {
+    const config = useRuntimeConfig()
+    const apiUrl = config.public.apiUrl || 'http://localhost:8000'
+    
+    const response = await $fetch(`${apiUrl}/api/profile/`, {
       method: 'POST',
       body: {
         transcript: inputText,
-        inputMode: isVoiceMode.value ? 'voice' : 'text'
+        inputMode: isVoiceMode.value ? 'voice' : 'text',
+        student_id: null // TODO: Get from auth
       }
     })
 

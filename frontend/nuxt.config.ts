@@ -1,6 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  compatibilityDate: '2024-04-03',
+  compatibilityDate: '2025-01-15',
   devtools: { enabled: true },
   modules: [
     '@nuxt/ui',
@@ -17,6 +17,14 @@ export default defineNuxtConfig({
   },
   typescript: {
     strict: true
+  },
+  runtimeConfig: {
+    // Private keys (server-side only)
+    // Public keys (exposed to client)
+    public: {
+      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'http://localhost:8000',
+      supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY
+    }
   }
 })
-

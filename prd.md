@@ -15,7 +15,7 @@ Palabam is the explosive AI game that turns middle school vocabulary gaps into *
 - Works for **2-year-olds** ("big bunny") to **adults** ("perspicacious") — same engine.
 - Outshines Quizlet 10x: **3D immersion + voice + AI narrative + spaced repetition > flashcards**.
 - **MCP-powered dev**: Cursor uses live Nuxt UI, Supabase, and AWS docs for flawless builds.
-- **TresJS Inspiration**: Draws from proven patterns like interactive 3D courts (Agorespace) for immersive realms, Aviator game repo for quest loops, and Cientos for clickable relics and animations.
+- **TresJS Inspiration**: Draws from proven patterns like interactive 3D courts (Agorespace) for immersive realms, Aviator game repo (https://github.com/enpitsuLin/tres-the-aviator) for how we can use our tech stack to make games, and Cientos for clickable relics and animations.
 
 ---
 

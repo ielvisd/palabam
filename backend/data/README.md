@@ -16,7 +16,7 @@ This directory contains COCA-like word frequency and Lexile-like difficulty scor
 
 ## Generating Datasets
 
-### Quick Start (Using wordfreq library)
+### Quick Start (Using wordfreq library - Recommended for Development)
 
 1. **Install dependencies**:
 ```bash

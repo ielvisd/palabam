@@ -2,7 +2,7 @@
 Spaced Repetition System (SRS)
 Implements SM-2 algorithm for vocabulary retention
 """
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from typing import Dict, Any, Optional, List
 import logging
 from dataclasses import dataclass
@@ -187,9 +187,23 @@ class DueWordsResponse(BaseModel):
 async def update_srs(request: SRSUpdateRequest):
     """Update SRS data after a word review"""
     try:
-        # TODO: Fetch current SRS data from database
-        # For now, create default data
-        current_data = SRSData()
+        from db import srs as db_srs
+        
+        # Fetch current SRS data from database
+        existing = await db_srs.get_srs_progress(request.student_id, request.word_id)
+        
+        if existing:
+            # Convert database record to SRSData
+            current_data = SRSData(
+                ease_factor=existing.get('ease_factor', 2.5),
+                interval=existing.get('interval', 1),
+                repetitions=existing.get('repetitions', 0),
+                due_date=date.fromisoformat(existing.get('due_date', date.today().isoformat())),
+                last_reviewed=datetime.fromisoformat(existing['last_reviewed']) if existing.get('last_reviewed') else None
+            )
+        else:
+            # Create new SRS data
+            current_data = SRSData()
         
         # Calculate next review
         updated_data = SM2Algorithm.calculate_next_review(current_data, request.quality)
@@ -197,8 +211,16 @@ async def update_srs(request: SRSUpdateRequest):
         # Calculate mastery
         mastery = SM2Algorithm.calculate_mastery_level(updated_data)
         
-        # TODO: Save to database
-        # await save_srs_data(request.student_id, request.word_id, updated_data)
+        # Save to database
+        await db_srs.upsert_srs_progress(
+            student_id=request.student_id,
+            word_id=request.word_id,
+            ease_factor=updated_data.ease_factor,
+            interval=updated_data.interval,
+            repetitions=updated_data.repetitions,
+            due_date=updated_data.due_date,
+            last_reviewed=updated_data.last_reviewed
+        )
         
         return SRSUpdateResponse(
             ease_factor=updated_data.ease_factor,
@@ -215,16 +237,61 @@ async def update_srs(request: SRSUpdateRequest):
 async def get_due_words(request: DueWordsRequest):
     """Get words due for review and new words for session"""
     try:
-        # TODO: Fetch SRS records from database
-        # srs_records = await get_srs_records(request.student_id)
-        srs_records = []  # Placeholder
+        from db import srs as db_srs, words as db_words
         
-        # Get due words
+        # Fetch SRS records from database with word data
+        srs_records = await db_srs.get_due_words_for_student(request.student_id)
+        
+        # Format records for SM2 algorithm
+        formatted_records = []
+        for record in srs_records:
+            word_data = record.get('words', {})
+            if word_data:
+                formatted_records.append({
+                    'id': record['word_id'],
+                    'word': word_data.get('word', ''),
+                    'definition': word_data.get('definition', ''),
+                    'example': word_data.get('example'),
+                    'relic_type': word_data.get('relic_type', 'echo'),
+                    'difficulty_score': word_data.get('difficulty_score', 50),
+                    'repetitions': record.get('repetitions', 0),
+                    'due_date': record.get('due_date'),
+                    'last_reviewed': record.get('last_reviewed')
+                })
+        
+        # Get due words using SM2 algorithm
         due_words = SM2Algorithm.get_due_words(
-            srs_records,
+            formatted_records,
             new_word_count=request.new_count,
             review_count=request.review_count
         )
+        
+        # If we don't have enough words, get some from the words table
+        if len(due_words['new']) < request.new_count:
+            # Get words that student hasn't practiced yet
+            practiced_word_ids = [r['word_id'] for r in srs_records]
+            available_words = await db_words.search_words(
+                min_difficulty=30,
+                max_difficulty=70,
+                limit=request.new_count * 2
+            )
+            
+            # Filter out already practiced words
+            new_words = [
+                w for w in available_words 
+                if w['id'] not in practiced_word_ids
+            ][:request.new_count - len(due_words['new'])]
+            
+            # Add to new words list
+            for word in new_words:
+                due_words['new'].append({
+                    'id': word['id'],
+                    'word': word['word'],
+                    'definition': word['definition'],
+                    'example': word.get('example'),
+                    'relic_type': word.get('relic_type', 'echo'),
+                    'difficulty_score': word.get('difficulty_score', 50)
+                })
         
         return DueWordsResponse(
             new_words=due_words['new'],

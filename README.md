@@ -59,23 +59,49 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
 
 4. **Environment Variables**:
 
-Create `.env` files in both `frontend/` and `backend/`:
+Copy the example files and fill in your values:
+
+```bash
+# Frontend
+cp frontend/.env.example frontend/.env
+# Edit frontend/.env with your Supabase credentials
+
+# Backend
+cp backend/.env.example backend/.env
+# Edit backend/.env with your Supabase and AWS credentials
+```
 
 **frontend/.env**:
-```
-NUXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NUXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-NUXT_PUBLIC_API_URL=http://localhost:8000
-```
+- `NUXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
+- `NUXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase **anon/public key** (safe for client-side, respects RLS)
+- `NUXT_PUBLIC_API_URL` - Backend API URL (default: `http://localhost:8000`)
 
 **backend/.env**:
-```
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_service_key
-AWS_ACCESS_KEY_ID=your_aws_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret
-AWS_REGION=us-east-1
-```
+- `SUPABASE_URL` - Your Supabase project URL (same as frontend)
+- `SUPABASE_KEY` - Your Supabase **service role key** (private, bypasses RLS, for server-side operations)
+- `AWS_ACCESS_KEY_ID` - AWS access key (for Transcribe fallback)
+- `AWS_SECRET_ACCESS_KEY` - AWS secret key
+- `AWS_REGION` - AWS region (default: `us-east-1`)
+
+**Root `.env` (for Supabase MCP)**:
+- `SUPABASE_URL` - Your Supabase project URL (same as frontend/backend)
+- `SUPABASE_ACCESS_TOKEN` - Your Supabase **service role key** (same value as `SUPABASE_KEY` in backend)
+
+**Important**: 
+- **Anon key** = Safe for frontend (client-side, respects RLS)
+- **Service role key** = Private, for backend and MCP (server-side/admin operations)
+- See `ENV_SETUP.md` for detailed explanation of what goes where and why.
+
+**Note for Supabase MCP**: To use the Supabase MCP server in Cursor, you have two options:
+
+1. **Root `.env` file (recommended for multi-project setup)**: 
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your SUPABASE_URL and SUPABASE_ACCESS_TOKEN (use service role key)
+   ```
+   Then configure Cursor MCP to read from the root `.env` file, or source it in your shell.
+
+2. **Cursor MCP Settings**: Configure both the URL and access token directly in Cursor's MCP settings (Settings → Features → Model Context Protocol). Use your Supabase service role key.
 
 5. **Database Setup**:
 
@@ -86,23 +112,29 @@ supabase db push
 # Or manually run migrations from supabase/migrations/
 ```
 
-6. **Generate Datasets** (or use existing ones):
+6. **Datasets** (Already included!):
 
-The project includes a script to generate word frequency and difficulty datasets:
+The project includes **real word frequency datasets** (50,000 words) downloaded from open-source sources.
 
+**Current Status**: ✅ Datasets are ready to use!
+- `backend/data/coca_frequency.json` - 50,000 words with frequency data
+- `backend/data/lexile_scores.json` - 50,000 words with difficulty scores
+
+**To download/update datasets**:
+```bash
+cd backend
+python3 scripts/download_datasets.py  # Downloads from GitHub sources
+```
+
+**To generate custom datasets** (alternative):
 ```bash
 cd backend
 pip install wordfreq  # Optional: for better frequency data
 python3 scripts/generate_datasets.py
 ```
 
-This creates:
-- `backend/data/coca_frequency.json` - Word frequency data
-- `backend/data/lexile_scores.json` - Word difficulty scores
-
-**Note**: The script works without `wordfreq` (uses estimates), but installing `wordfreq` provides more accurate data. You can also replace these with official COCA/Lexile datasets later.
-
-See `backend/data/README.md` for details on using official datasets.
+**To use official COCA/Lexile datasets**:
+See `backend/data/DOWNLOAD_GUIDE.md` for detailed instructions on obtaining and processing official datasets.
 
 ### Running the Application
 

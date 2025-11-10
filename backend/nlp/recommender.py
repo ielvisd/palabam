@@ -14,7 +14,7 @@ class WordRecommender:
     def __init__(self):
         self.dataset_loader = get_dataset_loader()
     
-    def recommend_words(
+    async def recommend_words(
         self,
         profile: Dict[str, Any],
         count: int = 7,
@@ -38,7 +38,7 @@ class WordRecommender:
         current_level = self._calculate_current_level(word_scores, resonance_data)
         
         # Find words in ZPD (slightly above current level)
-        zpd_words = self._find_zpd_words(current_level, zpd_range, count)
+        zpd_words = await self._find_zpd_words(current_level, zpd_range, count)
         
         # Filter out words already in profile
         existing_words = set(word_scores.keys())
@@ -70,7 +70,7 @@ class WordRecommender:
         
         return min(100.0, adjusted_level)
     
-    def _find_zpd_words(
+    async def _find_zpd_words(
         self,
         current_level: float,
         zpd_range: tuple,
@@ -83,12 +83,10 @@ class WordRecommender:
         target_min = current_level + (100 - current_level) * zpd_range[0]
         target_max = current_level + (100 - current_level) * zpd_range[1]
         
-        # This would ideally query a words database
-        # For now, we'll generate recommendations based on difficulty scores
-        recommendations = []
+        # Get word pool from database
+        sample_words = await self._get_word_pool()
         
-        # Sample word pool (in production, this would come from database)
-        sample_words = self._get_word_pool()
+        recommendations = []
         
         for word_data in sample_words:
             difficulty = word_data.get('difficulty_score', 50)
@@ -126,13 +124,33 @@ class WordRecommender:
         relevance = 1.0 - (distance_from_center / (zpd_width / 2))
         return max(0.0, min(1.0, relevance))
     
-    def _get_word_pool(self) -> List[Dict[str, Any]]:
+    async def _get_word_pool(self) -> List[Dict[str, Any]]:
         """
-        Get pool of words to recommend from
-        In production, this would query the words database
+        Get pool of words to recommend from database
         """
-        # Sample words for development
-        # In production, load from database
+        try:
+            from db import words as db_words
+            
+            # Search for words in ZPD range (30-80 difficulty)
+            word_pool = await db_words.search_words(
+                min_difficulty=30,
+                max_difficulty=80,
+                limit=100
+            )
+            
+            if word_pool:
+                return word_pool
+            
+            # Fallback to sample words if database is empty
+            logger.warning("Word pool from database is empty, using fallback")
+            return self._get_fallback_word_pool()
+            
+        except Exception as e:
+            logger.warning(f"Error fetching word pool from database: {e}, using fallback")
+            return self._get_fallback_word_pool()
+    
+    def _get_fallback_word_pool(self) -> List[Dict[str, Any]]:
+        """Fallback word pool if database is unavailable"""
         return [
             {
                 'word': 'resilient',
@@ -227,7 +245,7 @@ async def recommend_words(request: RecommendRequest):
     """Get word recommendations based on profile"""
     try:
         recommender = WordRecommender()
-        recommendations = recommender.recommend_words(
+        recommendations = await recommender.recommend_words(
             request.profile,
             count=request.count,
             zpd_range=request.zpd_range

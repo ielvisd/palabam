@@ -44,7 +44,10 @@ export const useSRS = () => {
     error.value = null
 
     try {
-      const response = await $fetch<DueWordsResponse>('/api/srs/due-words', {
+      const config = useRuntimeConfig()
+      const apiUrl = config.public.apiUrl || 'http://localhost:8000'
+      
+      const response = await $fetch<DueWordsResponse>(`${apiUrl}/api/srs/due-words`, {
         method: 'POST',
         body: {
           student_id: studentId,
@@ -77,7 +80,10 @@ export const useSRS = () => {
     error.value = null
 
     try {
-      const response = await $fetch<SRSProgress>('/api/srs/update', {
+      const config = useRuntimeConfig()
+      const apiUrl = config.public.apiUrl || 'http://localhost:8000'
+      
+      const response = await $fetch<SRSProgress>(`${apiUrl}/api/srs/update`, {
         method: 'POST',
         body: {
           student_id: studentId,
