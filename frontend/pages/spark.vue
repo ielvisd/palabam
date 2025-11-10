@@ -120,12 +120,12 @@
                 </div>
               </div>
               <UButton
-                to="/session"
+                to="/dashboard"
                 color="primary"
                 size="xl"
                 block
               >
-                Start Your First Session
+                View Dashboard
               </UButton>
             </div>
           </UCard>

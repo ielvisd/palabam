@@ -1,27 +1,26 @@
-# Palabam: AI-Powered Vocabulary Odyssey for Middle School Mastery
+# Palabam: Personalized Vocabulary Recommendation Engine for Middle School Students
 
 **Organization:** Flourish Schools  
 **Project ID:** JnGyV0Xlx2AEiL31nu7J_1761523676397  
-**Version:** 1.6 (Final – Cursor-Ready + PNPM Monorepo)  
+**Version:** 2.0 (Aligned with Original Spec)  
 **Date:** November 10, 2025
 
 ---
 
 ## 1. Executive Summary
 
-Palabam is the explosive AI game that turns middle school vocabulary gaps into **multiplayer 3D raids** — now **powered by a scientifically proven spaced repetition engine** and **advanced TresJS with Cientos**. Students complete **10-minute daily sessions** that blend **new word introduction** with **timed reviews** of past relics, ensuring long-term retention.
+Palabam is an AI-powered vocabulary recommendation engine that automates the identification of vocabulary gaps in middle school students' language use. By analyzing student conversation transcripts and writing samples, the system provides educators with personalized vocabulary word recommendations tailored to each student's proficiency level. This solution significantly reduces teacher workload while accelerating student vocabulary acquisition through data-driven insights.
 
-- **No grade labels** — words scale via **Story Spark** (narrative profiling).
-- Works for **2-year-olds** ("big bunny") to **adults** ("perspicacious") — same engine.
-- Outshines Quizlet 10x: **3D immersion + voice + AI narrative + spaced repetition > flashcards**.
-- **MCP-powered dev**: Cursor uses live Nuxt UI, Supabase, and AWS docs for flawless builds.
-- **TresJS Inspiration**: Draws from proven patterns like interactive 3D courts (Agorespace) for immersive realms, Aviator game repo (https://github.com/enpitsuLin/tres-the-aviator) for how we can use our tech stack to make games, and Cientos for clickable relics and animations.
+- **Automated Gap Detection**: AI analyzes transcripts using NLP (spaCy/NLTK) and compares against COCA/Lexile corpora
+- **Personalized Recommendations**: Suggests 5-7 ZPD-balanced words per student (70-80% learnability)
+- **Educator-Focused Dashboard**: Clear visualization of recommendations per student with export capabilities
+- **Cloud-Based Architecture**: FastAPI backend, Nuxt 3 frontend, Supabase database
 
 ---
 
 ## 2. Problem Statement
 
-Middle schoolers lack personalized, engaging vocab growth. Teachers waste hours on manual gap analysis. Existing tools (Quizlet) are 2D, generic, and drill-based — not story-driven, voice-inclusive, **or backed by spaced repetition science**.
+Middle school educators currently struggle with manually identifying vocabulary gaps in students' language use. This process is time-consuming and often fails to provide personalized recommendations that align with each student's current proficiency level. The lack of tailored vocabulary development opportunities may hinder students' language acquisition and overall academic performance. An automated system that can analyze language use and provide strategic vocabulary expansion opportunities is needed to address this gap.
 
 ---
 
@@ -32,8 +31,6 @@ Middle schoolers lack personalized, engaging vocab growth. Teachers waste hours 
 | Automate gap detection | 15–25% increase in novel word usage over 4 weeks |
 | Provide personalized recommendations | 80%+ of recommendations rated "useful" by educators |
 | Reduce teacher workload | 50% reduction in manual analysis time (survey) |
-| Increase student engagement | 5x average session length vs. Quizlet |
-| **Ensure long-term retention** | **70%+ recall after 30 days (spaced repetition benchmark)** |
 
 ---
 
@@ -49,23 +46,17 @@ Middle schoolers lack personalized, engaging vocab growth. Teachers waste hours 
 
 - **Persona: Alex, 12-Year-Old 6th Grader**
   - Enjoys gamified apps; uses school iPad daily.
-  - Needs: Personalized, challenging yet achievable vocabulary; support in improving language proficiency.
-
-**Universal Adapters (Scalability):**
-
-- **Niece (2yo)**: Sensory basics via voice and plush visuals.
-- **Adult Learner**: Fancy vocabulary (e.g., SAT, professional writing) via advanced relic themes.
+  - Needs: Personalized, challenging yet achievable vocabulary; support in improving language skills.
 
 ---
 
 ## 5. User Stories
 
 - As a middle school educator, I want to receive a list of vocabulary words tailored to each student's proficiency level so that I can efficiently enhance their language skills.
+- As a middle school educator, I want to upload or paste student transcripts and writing samples so that the system can analyze them automatically.
+- As a middle school educator, I want to view all recommended words for my students in a dashboard so that I can plan vocabulary instruction efficiently.
+- As a middle school educator, I want to export recommendations as CSV or PDF so that I can share them with parents or include them in lesson plans.
 - As a middle school student, I want to be challenged with new vocabulary words that I can realistically learn and use effectively, so that I can improve my language proficiency.
-- As a student, I want to **tap "Start Session"** and complete a **10-minute vocab drill** that mixes **new words and timed reviews**.
-- As a student, I want to **see basic progress** (e.g., "3/5 mastered") after each activity.
-- As a teacher, I want to **deploy a session** and instantly see **who's mastering what** in a visual dashboard.
-- As a parent, I want a **shareable link** to view my child's **legend ledger** and celebrate wins.
 
 ---
 
@@ -73,107 +64,108 @@ Middle schoolers lack personalized, engaging vocab growth. Teachers waste hours 
 
 ### P0: Must-have
 
+- **Transcript/Writing Sample Input**
+  - System accepts student conversation transcripts and writing samples via upload or paste
+  - Supports both text input and voice transcription (Web Speech API + AWS Transcribe fallback)
+  - Validates input quality (minimum length, format checks)
+
 - **Story Spark Profiling**
-  - Voice/text input (e.g., "Tell me about your weekend") → transcribed → analyzed via spaCy/NLTK → scored against COCA/Lexile corpora → generates **relic resonance profile**.
-  - No grade labels; words abstracted as "whisper relics" (basic) to "thunder relics" (advanced).
-- **Relic Resonance Engine**
-  - Suggests 5–7 ZPD-balanced words (70–80% learnability) as **3D artifacts** (TresJS with Cientos helpers for interactions).
-  - Dynamic pacing: Mastery → evolution (e.g., "big" → "enormous").
-- **Spaced Repetition System (SRS)**
-  - **Algorithm**: SM-2 inspired (ease factor, interval, due date)
-  - **Session Flow**:
-    1. Tap **"Start Session"**
-    2. 10-minute drill: **4 new words + 6–8 reviews** (timed)
-    3. End with **basic progress display**
-  - **Core Activities (6 total)**:
-    1. **Flashcard Introduction**
-       - Word + definition + example sentence
-       - Voice: TTS reads; Student repeats
-    2. **Meaning Multiple Choice**
-       - 4 options; 1 correct
-       - Voice: "Tap the meaning of *resilient*"
-    3. **Dictated Spelling**
-       - Hear word → type it
-       - Voice: "Spell *resilient*"
-    4. **Context Fill-in-the-Blank**
-       - Sentence with gap
-       - Voice: "Complete: The team was ___ after the loss."
-    5. **Synonym/Antonym Selection**
-       - 4 options; label as "same" or "opposite"
-    6. **Sentence Generation**
-       - Prompt: "Use *resilient* in a sentence about your day."
-       - AI scores (grammar, relevance)
-- **Dynamic Quest Generation**
-  - Personalized raids (e.g., **Resilient Raid**) based on transcript themes (soccer → teamwork).
-  - Full skill coverage: spelling, writing, speaking, reading, etymology.
-- **Dual Input Modes**
-  - **Voice**: Web Speech API (client) + AWS Transcribe fallback (noisy rooms).
-  - **Text**: Typing, drag-and-drop, emoji responses.
-  - Toggle via Nuxt UI `<USwitch>`.
-- **Multiplayer Sync**
-  - 2–8 players via Supabase Realtime.
-  - Shared relic fusion (e.g., basic + advanced = hybrid tower).
+  - Voice/text input → transcribed → analyzed via spaCy/NLTK
+  - Scored against COCA/Lexile corpora
+  - Generates vocabulary profile with word difficulty scores
+  - No grade labels; words abstracted as "whisper relics" (basic) to "thunder relics" (advanced)
+
+- **Gap Identification**
+  - AI identifies vocabulary gaps by comparing student usage against corpora
+  - Calculates current vocabulary level
+  - Identifies areas for growth
+
+- **Word Recommendation Engine**
+  - Suggests 5–7 ZPD-balanced words (70–80% learnability) per student
+  - Filters out words already in student's vocabulary
+  - Maintains dynamic list of recommended words
+
+- **Educator Dashboard**
+  - View all students with their recommended words
+  - Filter/search by student name or word
+  - View transcript history per student
+  - Export recommendations (CSV/PDF)
+  - Progress tracking (which words recommended when)
 
 ### P1: Should-have
 
-- **Teacher Dashboard**
-  - Nuxt UI: Deploy sessions, view resonance meters, export reports (CSV/PDF).
-  - Parent share links: `palab.am/student/abc?share=parent`.
-- **PWA Support**
-  - Mobile-ready out of the box (Nuxt auto-generates manifest).
-- **Progress Export**
-  - One-click lesson plans, IEP notes, parent summaries.
+- **Batch Processing**
+  - Process multiple students' transcripts simultaneously
+  - Bulk upload of transcripts/writing samples
+
+- **Integration with Educational Platforms**
+  - Google Classroom integration (fallback to manual input)
+  - Import student data from SIS systems
+
+- **Customizable Recommendation Settings**
+  - Adjust ZPD range per student
+  - Set recommendation count preferences
+  - Filter by word type or theme
 
 ### P2: Nice-to-have
 
-- **Procedural 3D Relics**
-  - TresJS geometry generation (e.g., icosahedrons morphing by word length).
-- **Voice Feedback via AWS Transcribe**
-  - Pronunciation scoring, prosody boosts.
-- **Parent Portal**
-  - Full login, progress history (stretch goal).
+- **Gamified Vocabulary Challenges**
+  - Student-facing activities for practicing recommended words
+  - Progress tracking for student engagement
+
+- **Advanced Analytics**
+  - Vocabulary growth trends over time
+  - Class-level vocabulary insights
+  - Comparative analysis across students
 
 ---
 
 ## 7. Non-Functional Requirements
 
 - **Performance**:
-  - Session load <3s
-  - <10k triangles per 3D model
   - Parallel processing of 100+ transcripts in <5 min
+  - Dashboard load time <2s
+  - API response time <500ms for recommendations
+
 - **Scalability**:
-  - 1,000+ concurrent users
+  - Handle 1,000+ concurrent users
   - Auto-scale on Vercel + AWS
+  - Support for large batch processing
+
 - **Security**:
   - FERPA-compliant
   - Anonymized voice transcripts
   - Supabase Row Level Security (RLS)
+  - Secure file upload handling
+
 - **Reliability**:
   - 99% uptime
   - Error handling for malformed inputs
+  - Graceful degradation for API failures
+
 - **Accessibility**:
-  - WCAG 2.1 AA
-  - Voice fallback, high contrast, screen reader support
-  - **Age-appropriate UI**: Large buttons, simple fonts, plush visuals for toddlers
+  - WCAG 2.1 AA compliance
+  - Screen reader support
+  - Keyboard navigation
 
 ---
 
 ## 8. User Experience & Design Considerations
 
 - **Workflows**:
-  1. **Story Spark** → 2. **Daily Session (10 min)** → 3. **Quest Raid** → 4. **Legend Ledger** → 5. **Next Evolution**
+  1. **Upload Transcript/Writing Sample** → 2. **Analysis & Gap Detection** → 3. **View Recommendations** → 4. **Export & Use**
+
 - **Interface Principles**:
-  - Clear visualization: Resonance meters, relic glows, progress timelines
-  - Nuxt UI components: `<UProgress>`, `<UConfetti>`, `<UTimeline>`, `<UButton size="xl">`
-  - **Basic Progress Display**: "3/5 mastered" + streak counter
+  - Clear visualization: Student list, recommended words, progress indicators
+  - Nuxt UI components: `<UCard>`, `<UButton>`, `<UProgress>`, `<UTable>`
+  - Simple, educator-focused design
+  - Mobile-responsive layout
+
 - **Accessibility Needs**:
-  - Voice/text toggle
-  - Colorblind-safe palettes
-  - Large tap targets for toddlers
-  - **Age-appropriate UI**:
-    - **Toddlers**: Plush animals, big buttons, voice-only
-    - **Middle School**: 3D realms, multiplayer
-    - **Adults**: Clean, dark mode, advanced themes
+  - High contrast, readable fonts
+  - Large click targets
+  - Clear error messages
+  - Loading states for async operations
 
 ---
 
@@ -182,10 +174,10 @@ Middle schoolers lack personalized, engaging vocab growth. Teachers waste hours 
 ### System Architecture
 
 - **Cloud-based deployment**
-  - **Frontend**: Vercel
-  - **Backend**: AWS Lambda (via Supabase Edge Functions or direct)
-  - **Database/Auth/Realtime**: Supabase
-  - **Voice Fallback**: AWS Transcribe (MCP-wired)
+  - **Frontend**: Vercel (Nuxt 3)
+  - **Backend**: FastAPI (AWS Lambda or direct deployment)
+  - **Database/Auth**: Supabase
+  - **Voice Fallback**: AWS Transcribe (optional)
 
 ### Monorepo Structure
 
@@ -194,21 +186,22 @@ palabam/
 ├── backend/                  # FastAPI
 │   ├── main.py
 │   ├── nlp/
-│   │   ├── profiler.py
-│   │   ├── recommender.py
-│   │   └── srs.py           # SM-2 logic
+│   │   ├── profiler.py       # Transcript analysis
+│   │   ├── recommender.py    # Word recommendations
+│   │   └── dataset_loader.py # COCA/Lexile data
+│   ├── db/
+│   │   ├── profiles.py       # Student profiles
+│   │   ├── words.py          # Vocabulary database
+│   │   └── supabase_client.py
 │   └── requirements.txt
 ├── frontend/                 # Nuxt 3
 │   ├── app.vue
 │   ├── pages/
-│   │   ├── index.vue
-│   │   ├── spark.vue
-│   │   ├── session.vue      # 10-min drill
-│   │   └── games/raid.vue
+│   │   ├── index.vue         # Educator landing page
+│   │   ├── spark.vue         # Transcript input
+│   │   └── dashboard.vue     # Educator dashboard
 │   ├── composables/
-│   │   ├── useVocabInput.ts
-│   │   ├── useSRS.ts
-│   │   └── useProceduralRelic.ts
+│   │   └── useVocabInput.ts  # Transcript input handling
 │   ├── assets/css/tailwind.css
 │   └── nuxt.config.ts
 ├── supabase/
@@ -218,38 +211,18 @@ palabam/
 
 ### Package Manager
 
-- **PNPM** — **No npm**.
-  - Faster, disk-efficient, strict dependency hoisting.
-  - Required for monorepo with `/frontend` + `/backend`.
-  - Cursor auto-detects `pnpm-lock.yaml`.
+- **PNPM** — Required for monorepo
+  - Faster, disk-efficient, strict dependency hoisting
+  - Cursor auto-detects `pnpm-lock.yaml`
 
-#### Root Setup
-
-```yaml
-# pnpm-workspace.yaml
-packages:
-  - 'frontend'
-  - 'backend'
-```
+#### Frontend Dependencies (`frontend/package.json`)
 
 ```bash
-# Install PNPM
-corepack enable
-corepack prepare pnpm@latest --activate
-
-# Install deps
-pnpm install
-```
-
-#### Frontend (`frontend/package.json`)
-
-```bash
-pnpm add @nuxt/ui tresjs @supabase/nuxt @tresjs/cientos
+pnpm add @nuxt/ui @supabase/nuxt
 pnpm add -D tailwindcss
-pnpm exec tailwindcss init
 ```
 
-#### Backend (`backend/requirements.txt`)
+#### Backend Dependencies (`backend/requirements.txt`)
 
 ```txt
 fastapi
@@ -258,195 +231,88 @@ spacy
 nltk
 scikit-learn
 boto3
-```
-
-#### CSS Setup (`frontend/assets/css/tailwind.css`)
-
-```css
-@import "tailwindcss";
-@import "@nuxt/ui";
-```
-
-#### Frontend Config (`frontend/nuxt.config.ts`)
-
-```ts
-export default defineNuxtConfig({
-  modules: ['@nuxt/ui', '@supabase/nuxt'],
-  css: ['~/assets/css/tailwind.css'],
-  supabase: {
-    redirectOptions: {
-      login: '/login',
-      callback: '/confirm'
-    }
-  }
-})
-```
-
-#### Tailwind Config (`tailwind.config.js`)
-
-```js
-export default {
-  content: [
-    './components/**/*.{js,vue,ts}',
-    './layouts/**/*.vue',
-    './pages/**/*.vue',
-    './plugins/**/*.{js,ts}',
-    './nuxt.config.{js,ts}',
-    './app.vue'
-  ]
-}
-```
-
-### 3D Assets & TresJS Integration
-
-- **poly.pizza**: Free CC-BY low-poly GLTF models (crystals, fortresses, orbs)
-- **Procedural**: TresJS IcosahedronGeometry, CylinderGeometry
-- **Performance**: <5k tris per model, lazy-loaded
-
-#### TresJS Enhancements
-
-- **Core API**: Use primitives like `<TresMesh>`, `<TresIcosahedronGeometry>` for relic artifacts; event handling via Vue composables (e.g., `@click` on meshes for interactions).
-- **Nuxt patterns**: Wrap in `<TresCanvas>` with dynamic props.
-- **Cookbook Inspiration**: Leverage recipes for animations (e.g., GSAP for relic morphs), OrbitControls for quest navigation, and model loading for poly.pizza imports.
-- **Cientos Package**: Advanced helpers for interactions (e.g., `<OrbitControls>` for relic inspection), effects (e.g., text animations for sentence generation), and morph targets (voice-synced relic changes).
-
-**Install**: `pnpm add @tresjs/cientos`
-
-**Example**:
-
-```vue
-<script setup>
-import { OrbitControls } from '@tresjs/cientos'
-</script>
-<template>
-  <TresCanvas>
-    <TresMesh> <!-- Relic -->
-      <TresIcosahedronGeometry :args="[1, 1]" />
-      <TresMeshStandardMaterial color="#00ff88" />
-    </TresMesh>
-    <OrbitControls /> <!-- Clickable inspection -->
-  </TresCanvas>
-</template>
-```
-
-- **Repo Inspiration**: From "tres-the-aviator" GitHub: Adopt game loop patterns (e.g., update cycles for SRS timers), user input handling (keyboard/voice for activities), and scene management for raid flows. Structure: Modular components for quests, reusable for multiplayer sync.
-- **Demo Inspiration**: Agorespace 3D courts showcase immersive sports visualizations—adapt for Palabam realms (e.g., soccer-themed bastions with dynamic lighting on mastery, procedural turf for context quests, user panning for relic exploration).
-
-### MCP Setup (Dev Superpower)
-
-```bash
-# Frontend
-pnpm dlx nuxi module add nuxt-mcp
-pnpm add @nuxt/ui @tresjs/cientos
-
-# Backend
-pip install aws-mcp-proxy
-```
-
-#### Cursor Rules (`.cursor/rules.md`)
-
-```md
-Use Nuxt UI MCP for components.
-Use Supabase MCP for realtime/auth.
-Use AWS MCP for Transcribe/Lambda.
-Never use npm — use pnpm only.
-All 3D from poly.pizza or procedural TresJS + Cientos.
-No grade labels — use "relic resonance".
-Implement 10-minute SRS sessions with 6 core activities.
-Reference TresJS cookbook for animations, Cientos for interactions.
+supabase
 ```
 
 ---
 
 ## 10. Dependencies & Assumptions
 
-- Availability of student conversation transcripts and writing samples (via Story Spark).
-- Integration with Google Classroom (fallback to manual input).
-- Access to Vercel, Supabase, AWS (free tier for dev).
-- MCP servers running locally during dev (Nuxt UI on port 3100; AWS via proxy).
-- Cursor Pro for full MCP client support.
+- Availability of student conversation transcripts and writing samples for analysis
+- Integration capabilities with existing school data management systems (Google Classroom)
+- Access to Vercel, Supabase, AWS (free tier for dev)
+- COCA and Lexile datasets available for vocabulary scoring
 
 ---
 
 ## 11. Out of Scope
 
-- Direct classroom implementation or educator training.
-- Development of proprietary AI frameworks.
-- Real-time speech-to-text conversion (assumes Web Speech API + Transcribe).
-- Mobile app (PWA covers it).
-- Parent portal login (share links only).
+- Direct classroom implementation or training for educators
+- Development of proprietary AI frameworks beyond publicly available tools
+- Real-time speech-to-text conversion (assumes text data is pre-processed or uses Web Speech API)
+- Student-facing learning platform (gamification, activities, SRS)
+- Mobile app (web app is mobile-responsive)
+- Parent portal login (export functionality covers sharing needs)
 
 ---
 
 ## 12. Pedagogical Foundation
 
-All recommendations incorporate evidence-based routines:
+All recommendations incorporate evidence-based practices:
 
 | Practice | Implementation in Palabam |
 |----------|---------------------------|
-| Explicit Word Selection | 8–10 high-utility words/week; student-friendly defs + examples |
-| Frayer Model | 3D rotatable relic with 4 facets (def, char, ex, non-ex) |
-| Semantic Mapping | TresJS web of synonyms/antonyms/contexts |
-| Morphemic Analysis | Root raids (e.g., "re-" + "silio" = leap back) |
-| Repeated Review | Spaced repetition (SM-2) in 10-min sessions |
-| Multimodal Practice | 6 core activities covering spelling, meaning, context, usage |
+| Explicit Word Selection | 5-7 high-utility words per student; student-friendly definitions + examples |
+| Zone of Proximal Development (ZPD) | Words at 70-80% learnability (slightly above current level) |
+| Vocabulary Gap Analysis | Compare student usage against age-appropriate corpora (COCA/Lexile) |
+| Personalized Recommendations | Tailored to each student's current vocabulary profile |
 
-**Alignment**: National Reading Panel, Beck et al. (2002), WWC (2011), Hirsch (2006), Anki/SRS research
+**Alignment**: National Reading Panel, Beck et al. (2002), WWC (2011), Hirsch (2006)
 
 ---
 
-## 13. 10-Minute Session Flow (`pages/session.vue` stub)
+## 13. Database Schema
 
-```vue
-<script setup lang="ts">
-const activities = [
-  'flashcard', 'multiple-choice', 'spelling', 
-  'fill-blank', 'synonym', 'sentence'
-]
-const progress = ref(0)
-const total = ref(10) // 4 new + 6 reviews
-</script>
+### Core Tables
 
-<template>
-  <UContainer class="p-6">
-    <UCard>
-      <template #header>
-        <h2 class="text-2xl font-bold">Daily Vocab Drill</h2>
-        <UProgress :value="progress" :max="total" class="mt-2" />
-      </template>
-      
-      <UButton size="xl" @click="startSession" class="w-full">
-        Start Session
-      </UButton>
-    </UCard>
-  </UContainer>
-</template>
-```
+- **profiles**: Student vocabulary profiles with resonance data and word scores
+- **words**: Vocabulary database with difficulty scores, definitions, examples
+- **recommendations**: Track recommended words per student with timestamps
+- **students**: Student information linked to users
+- **teachers**: Teacher information linked to users
+
+### Tables Removed/Deferred
+
+- **srs_progress**: Spaced repetition data (moved to future enhancements)
+- **sessions**: Student learning sessions (moved to future enhancements)
+- **quests**: 3D game quests (moved to future enhancements)
 
 ---
 
-## 14. Resilient Raid MVP (`pages/games/raid.vue` stub)
+## 14. API Endpoints
 
-```vue
-<script setup lang="ts">
-import { TresCanvas } from '@tresjs/core'
-import { OrbitControls } from '@tresjs/cientos'
-import { useVocabInput } from '@/composables/useVocabInput'
-import { useProceduralRelic } from '@/composables/useProceduralRelic'
+### Profile Endpoints
 
-const { isVoiceMode } = useVocabInput()
-const { mesh: orb } = useProceduralRelic('resilient')
-</script>
+- `POST /api/profile/` - Create profile from transcript
+  - Request: `{ transcript: string, inputMode: string, student_id?: string }`
+  - Response: `{ profile_id, word_scores, resonance_data, vocabulary_level, recommended_words }`
 
-<template>
-  <UContainer>
-    <TresCanvas>
-      <TresScene>
-        <primitive :object="orb" />
-        <OrbitControls /> <!-- Cientos for relic interaction -->
-      </TresScene>
-    </TresCanvas>
-    <USwitch v-model="isVoiceMode" label="Voice Mode" />
-  </UContainer>
-</template>
-```
+### Recommendation Endpoints
+
+- `POST /api/recommend/` - Get word recommendations
+  - Request: `{ profile: object, count: number, zpd_range: tuple }`
+  - Response: `{ recommended_words: array }`
+
+---
+
+## 15. Future Enhancements
+
+The following features were part of the original vision but are deferred to focus on the core recommendation engine:
+
+- **Spaced Repetition System (SRS)**: SM-2 algorithm for long-term retention
+- **Student Learning Activities**: Flashcards, multiple choice, spelling, fill-in-the-blank, synonym, sentence generation
+- **3D Gamification**: TresJS-based 3D relics and multiplayer raids
+- **Real-time Multiplayer**: Supabase Realtime for collaborative learning
+- **Advanced Voice Features**: Pronunciation scoring, prosody analysis
+
+These features may be added in future versions based on educator feedback and usage patterns.

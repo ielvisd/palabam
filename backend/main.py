@@ -8,8 +8,8 @@ from contextlib import asynccontextmanager
 
 app = FastAPI(
     title="Palabam API",
-    description="AI-Powered Vocabulary Odyssey API",
-    version="1.0.0"
+    description="Personalized Vocabulary Recommendation Engine API",
+    version="2.0.0"
 )
 
 # CORS middleware
@@ -32,10 +32,15 @@ async def health():
     return {"status": "healthy"}
 
 # Import routers
-from nlp import profiler, recommender, srs
+from nlp import profiler, recommender
 app.include_router(profiler.router, prefix="/api/profile", tags=["profiling"])
 app.include_router(recommender.router, prefix="/api/recommend", tags=["recommendations"])
-app.include_router(srs.router, prefix="/api/srs", tags=["srs"])
+
+# Story Spark routers
+from api import classes, submissions, students
+app.include_router(classes.router, prefix="/api/classes", tags=["classes"])
+app.include_router(submissions.router, prefix="/api/submissions", tags=["submissions"])
+app.include_router(students.router, prefix="/api/students", tags=["students"])
 
 if __name__ == "__main__":
     import uvicorn
