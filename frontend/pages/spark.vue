@@ -25,7 +25,7 @@ definePageMeta({
 
 // Redirect to the main Story Spark page
 useHead({
-  title: 'Story Spark - Palabam'
+  title: 'Story Spark'
 })
 
 // Redirect based on user role

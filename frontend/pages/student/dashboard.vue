@@ -125,7 +125,7 @@
                     variant="soft"
                     size="sm"
                   >
-                    {{ word.relic_type }}
+                    {{ getRelicTypeLabel(word.relic_type) }}
                   </UBadge>
                 </div>
                 <p v-if="typeof word !== 'string' && word.definition" class="text-sm text-gray-600">
@@ -303,6 +303,17 @@ const getRelicTypeColor = (type: string) => {
     thunder: 'red'
   }
   return colors[type] || 'gray'
+}
+
+const getRelicTypeLabel = (type?: string) => {
+  if (!type) return 'Basic'
+  const labels: Record<string, string> = {
+    whisper: 'Easy',
+    echo: 'Basic',
+    resonance: 'Intermediate',
+    thunder: 'Advanced'
+  }
+  return labels[type] || 'Basic'
 }
 
 const formatAchievementType = (type: string) => {

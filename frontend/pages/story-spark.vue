@@ -43,9 +43,46 @@
               placeholder="Select a student to assess"
               :loading="loadingStudents"
               size="lg"
-            />
+            >
+              <template #label>
+                <span v-if="selectedStudentId">
+                  {{ getSelectedStudentName() }}
+                  <span v-if="getSelectedStudentClasses().length > 0" class="text-xs text-gray-500 ml-2">
+                    ({{ getSelectedStudentClasses().map(c => c.name).join(', ') }})
+                  </span>
+                </span>
+                <span v-else>Select a student to assess</span>
+              </template>
+              <template #option="{ option }">
+                <div class="flex items-center justify-between w-full">
+                  <span>{{ option.name }}</span>
+                  <div v-if="option.classes && option.classes.length > 0" class="flex gap-1 ml-2">
+                    <UBadge
+                      v-for="classItem in option.classes.slice(0, 2)"
+                      :key="classItem.id"
+                      color="gray"
+                      variant="soft"
+                      size="xs"
+                    >
+                      {{ classItem.name }}
+                    </UBadge>
+                    <UBadge
+                      v-if="option.classes.length > 2"
+                      color="gray"
+                      variant="soft"
+                      size="xs"
+                    >
+                      +{{ option.classes.length - 2 }}
+                    </UBadge>
+                  </div>
+                </div>
+              </template>
+            </USelectMenu>
             <p class="text-xs text-gray-600">
               Select a student from your classes to assess their vocabulary on the spot.
+              <span v-if="selectedStudentId && getSelectedStudentClasses().length > 1" class="text-primary font-medium">
+                This student is in multiple classes.
+              </span>
             </p>
           </div>
         </UCard>
@@ -127,14 +164,16 @@
         </div>
 
         <!-- Text Mode -->
-        <div v-else>
+        <div v-else class="w-full">
           <UTextarea
             v-model="textInput"
             placeholder="Type your story here... Be creative and use your own words!"
             :rows="10"
             size="xl"
             :disabled="isProcessing"
-            class="font-sans"
+            block
+            class="font-sans w-full"
+            :ui="{ base: 'w-full' }"
           />
           <p class="text-xs text-gray-600 mt-2">
             {{ textInput.length }} characters • {{ wordCount }} words
@@ -237,7 +276,7 @@
                             variant="soft"
                             size="xs"
                           >
-                            {{ word.relic_type }}
+                            {{ getRelicTypeLabel(word.relic_type) }}
                           </UBadge>
                           <UBadge
                             v-if="typeof word !== 'string' && word.grade_level"
@@ -308,7 +347,10 @@ const { getUserRole, getTeacherId, getStudentId } = useAuth()
 const userRole = ref<string | null>(null)
 const teacherId = ref<string | null>(null)
 const selectedStudentId = ref<string | null>(null)
-const availableStudents = ref<Array<{ id: string; name: string }>>([])
+// Student selection pattern: Flat list for quick access
+// This page uses a flat list of all students (vs. hierarchical Class→Student on upload page)
+// because Story Spark is for quick, one-off assessments where teachers often know the student name
+const availableStudents = ref<Array<{ id: string; name: string; classes?: Array<{ id: string; name: string }> }>>([])
 const loadingStudents = ref(false)
 
 const {
@@ -390,7 +432,8 @@ onMounted(async () => {
   })
 })
 
-// Fetch all students from teacher's classes
+// Fetch all students from teacher's classes with class information
+// Enhanced to show which classes each student belongs to (helps with multi-class students)
 const fetchTeacherStudents = async () => {
   if (!teacherId.value) return
   
@@ -403,8 +446,8 @@ const fetchTeacherStudents = async () => {
     const classesResponse = await $fetch(`${apiUrl}/api/classes/teacher/${teacherId.value}`) as any
     const classes = classesResponse.classes || []
     
-    // Get all students from all classes
-    const studentMap = new Map<string, { id: string; name: string }>()
+    // Get all students from all classes, tracking which classes each student belongs to
+    const studentMap = new Map<string, { id: string; name: string; classes: Array<{ id: string; name: string }> }>()
     
     for (const classItem of classes) {
       try {
@@ -415,7 +458,16 @@ const fetchTeacherStudents = async () => {
           if (!studentMap.has(student.id)) {
             studentMap.set(student.id, {
               id: student.id,
-              name: student.name
+              name: student.name,
+              classes: []
+            })
+          }
+          // Add class to student's class list
+          const studentData = studentMap.get(student.id)!
+          if (!studentData.classes.find(c => c.id === classItem.id)) {
+            studentData.classes.push({
+              id: classItem.id,
+              name: classItem.name
             })
           }
         }
@@ -433,6 +485,17 @@ const fetchTeacherStudents = async () => {
   } finally {
     loadingStudents.value = false
   }
+}
+
+// Helper functions for student selection display
+const getSelectedStudentName = () => {
+  const student = availableStudents.value.find(s => s.id === selectedStudentId.value)
+  return student?.name || ''
+}
+
+const getSelectedStudentClasses = () => {
+  const student = availableStudents.value.find(s => s.id === selectedStudentId.value)
+  return student?.classes || []
 }
 
 const wordCount = computed(() => {
@@ -520,6 +583,9 @@ const submitStory = async () => {
     processingStatus.value = 'Generating recommendations...'
     
     // Also create submission record for history
+    // Note: Submissions are stored with student_id only (no class_id)
+    // This means if a student is in multiple classes, their submissions are visible
+    // across all classes. Vocabulary analysis is shared across all classes (Option A).
     const response = await $fetch(`${apiUrl}/api/submissions/`, {
       method: 'POST',
       body: {
@@ -634,6 +700,16 @@ const getRelicTypeColor = (type?: string) => {
   return colors[type || ''] || 'gray'
 }
 
+const getRelicTypeLabel = (type?: string) => {
+  const labels: Record<string, string> = {
+    whisper: 'Easy',
+    echo: 'Basic',
+    resonance: 'Intermediate',
+    thunder: 'Advanced'
+  }
+  return labels[type || ''] || 'Basic'
+}
+
 const getWordCardBorderClass = (word: any): string => {
   if (typeof word === 'string') return 'border-l-primary'
   const type = word.relic_type || 'echo'
@@ -647,7 +723,7 @@ const getWordCardBorderClass = (word: any): string => {
 }
 
 useHead({
-  title: 'Story Spark - Palabam'
+  title: 'Story Spark'
 })
 </script>
 

@@ -10,3 +10,4 @@ global.useSupabaseClient = vi.fn()
 global.useSupabaseUser = vi.fn()
 global.useRuntimeConfig = vi.fn()
 
+

@@ -226,7 +226,7 @@
                             variant="soft"
                             size="xs"
                           >
-                            {{ word.relic_type }}
+                            {{ getRelicTypeLabel(word.relic_type) }}
                           </UBadge>
                           <UBadge
                             v-if="typeof word !== 'string' && word.grade_level"
@@ -342,13 +342,22 @@
                       <span class="font-medium">{{ getClassStudentCount(classItem.id) }}</span> students
                     </p>
                   </div>
-                  <UButton
-                    variant="ghost"
-                    color="neutral"
-                    size="sm"
-                    icon="i-heroicons-chevron-right"
-                    @click.stop="openClassModal(classItem)"
-                  />
+                  <div class="flex gap-2">
+                    <UButton
+                      variant="ghost"
+                      color="red"
+                      size="sm"
+                      icon="i-heroicons-trash"
+                      @click.stop="confirmDeleteClass(classItem)"
+                    />
+                    <UButton
+                      variant="ghost"
+                      color="neutral"
+                      size="sm"
+                      icon="i-heroicons-chevron-right"
+                      @click.stop="openClassModal(classItem)"
+                    />
+                  </div>
                 </div>
               </UCard>
             </div>
@@ -515,15 +524,24 @@
                           <UIcon name="i-heroicons-user" class="text-gray-400" />
                           <span class="font-medium text-navy dark:text-white">{{ student.name }}</span>
                         </div>
-                        <UButton
-                          :to="`/students/${student.id}`"
-                          variant="ghost"
-                          color="neutral"
-                          size="sm"
-                          icon="i-heroicons-arrow-top-right-on-square"
-                        >
-                          View
-                        </UButton>
+                        <div class="flex gap-2">
+                          <UButton
+                            variant="ghost"
+                            color="red"
+                            size="sm"
+                            icon="i-heroicons-trash"
+                            @click="confirmRemoveStudent(student)"
+                          />
+                          <UButton
+                            :to="`/students/${student.id}`"
+                            variant="ghost"
+                            color="neutral"
+                            size="sm"
+                            icon="i-heroicons-arrow-top-right-on-square"
+                          >
+                            View
+                          </UButton>
+                        </div>
                       </div>
                     </UCard>
                   </div>
@@ -620,6 +638,96 @@
         </UButton>
       </template>
     </UModal>
+
+    <!-- Delete Class Confirmation Modal -->
+    <UModal 
+      v-model:open="showDeleteClassModal"
+      title="Delete Class"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <UAlert color="red" variant="soft">
+            <p class="font-semibold">Warning: This action cannot be undone.</p>
+            <p class="text-sm mt-1">
+              Deleting this class will remove all students from the class and cancel all pending invites.
+              Student records will not be deleted.
+            </p>
+          </UAlert>
+          <p class="text-gray-600 dark:text-gray-300">
+            Are you sure you want to delete <strong>{{ classToDelete?.name }}</strong>?
+          </p>
+        </div>
+      </template>
+      
+      <template #footer="{ close }">
+        <div class="flex gap-4">
+          <UButton
+            @click="handleDeleteClass"
+            color="red"
+            :loading="deletingClass"
+            :disabled="deletingClass"
+            block
+            size="lg"
+          >
+            Delete Class
+          </UButton>
+          <UButton
+            @click="close"
+            variant="outline"
+            color="neutral"
+            :disabled="deletingClass"
+            block
+            size="lg"
+          >
+            Cancel
+          </UButton>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- Remove Student Confirmation Modal -->
+    <UModal 
+      v-model:open="showRemoveStudentModal"
+      title="Remove Student from Class"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <UAlert color="orange" variant="soft">
+            <p class="text-sm">
+              Removing this student from the class will unenroll them. They can rejoin using the class code if needed.
+            </p>
+          </UAlert>
+          <p class="text-gray-600 dark:text-gray-300">
+            Are you sure you want to remove <strong>{{ studentToRemove?.name }}</strong> from this class?
+          </p>
+        </div>
+      </template>
+      
+      <template #footer="{ close }">
+        <div class="flex gap-4">
+          <UButton
+            @click="handleRemoveStudent"
+            color="red"
+            :loading="removingStudent"
+            :disabled="removingStudent"
+            block
+            size="lg"
+          >
+            Remove Student
+          </UButton>
+          <UButton
+            @click="close"
+            variant="outline"
+            color="neutral"
+            :disabled="removingStudent"
+            block
+            size="lg"
+          >
+            Cancel
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </UContainer>
 </template>
 
@@ -698,6 +806,14 @@ const generatedLink = ref<string | null>(null)
 const loadingInvite = ref(false)
 const loadingClasses = ref(false)
 
+// Delete functionality state
+const showDeleteClassModal = ref(false)
+const classToDelete = ref<any>(null)
+const deletingClass = ref(false)
+const showRemoveStudentModal = ref(false)
+const studentToRemove = ref<any>(null)
+const removingStudent = ref(false)
+
 // Stats
 const stats = computed(() => {
   const analyzed = students.value.filter(s => s.vocabulary_level && s.vocabulary_level !== 'Not assessed').length
@@ -759,6 +875,20 @@ watch(showCreateClassModal, async (isOpen) => {
   if (isOpen) {
     createClassError.value = null
     newClassName.value = ''
+}
+})
+
+// Watch for delete class modal closing
+watch(showDeleteClassModal, (isOpen) => {
+  if (!isOpen) {
+    classToDelete.value = null
+  }
+})
+
+// Watch for remove student modal closing
+watch(showRemoveStudentModal, (isOpen) => {
+  if (!isOpen) {
+    studentToRemove.value = null
   }
 })
 
@@ -1092,6 +1222,84 @@ const closeClassCreatedModal = () => {
   showClassCreatedModal.value = false
 }
 
+// Delete class functions
+const confirmDeleteClass = (classItem: any) => {
+  classToDelete.value = classItem
+  showDeleteClassModal.value = true
+}
+
+const handleDeleteClass = async () => {
+  if (!classToDelete.value || !teacherId.value) {
+    return
+  }
+
+  const deletedClassId = classToDelete.value.id
+  deletingClass.value = true
+  try {
+    await $fetch(`${apiUrl}/api/classes/${deletedClassId}`, {
+      method: 'DELETE',
+      params: {
+        teacher_id: teacherId.value
+      }
+    })
+
+    // If the deleted class was the selected one, close the detail modal
+    if (selectedClass.value?.id === deletedClassId) {
+      closeClassDetailModal()
+    }
+    
+    // Close modal and refresh data
+    showDeleteClassModal.value = false
+    classToDelete.value = null
+    
+    // Refresh classes and student counts
+    await fetchClasses()
+    await fetchClassStudentCounts()
+    await fetchStudents()
+  } catch (err: any) {
+    console.error('Error deleting class:', err)
+    alert('Failed to delete class: ' + (err.data?.detail || err.message || 'Unknown error'))
+  } finally {
+    deletingClass.value = false
+  }
+}
+
+// Remove student from class functions
+const confirmRemoveStudent = (student: any) => {
+  studentToRemove.value = student
+  showRemoveStudentModal.value = true
+}
+
+const handleRemoveStudent = async () => {
+  if (!studentToRemove.value || !selectedClass.value || !teacherId.value) {
+    return
+  }
+
+  removingStudent.value = true
+  try {
+    await $fetch(`${apiUrl}/api/classes/${selectedClass.value.id}/students/${studentToRemove.value.id}`, {
+      method: 'DELETE',
+      params: {
+        teacher_id: teacherId.value
+      }
+    })
+
+    // Close modal and refresh data
+    showRemoveStudentModal.value = false
+    studentToRemove.value = null
+    
+    // Refresh class students and counts
+    await fetchClassStudents(selectedClass.value.id)
+    await fetchClassStudentCounts()
+    await fetchStudents()
+  } catch (err: any) {
+    console.error('Error removing student from class:', err)
+    alert('Failed to remove student: ' + (err.data?.detail || err.message || 'Unknown error'))
+  } finally {
+    removingStudent.value = false
+  }
+}
+
 // Export functions
 const exportToCSV = async () => {
   exporting.value = true
@@ -1277,6 +1485,17 @@ const getRelicTypeColor = (type?: string) => {
     thunder: 'pink'
   }
   return colors[type] || 'gray'
+}
+
+const getRelicTypeLabel = (type?: string) => {
+  if (!type) return 'Basic'
+  const labels: Record<string, string> = {
+    whisper: 'Easy',
+    echo: 'Basic',
+    resonance: 'Intermediate',
+    thunder: 'Advanced'
+  }
+  return labels[type] || 'Basic'
 }
 
 useHead({

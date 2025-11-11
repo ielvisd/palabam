@@ -135,3 +135,73 @@
     opacity: 1;
   }
 }
+
+/* Cursor pointers for all clickable elements */
+@layer base {
+  /* Buttons - ensure all buttons have pointer cursor */
+  button:not(:disabled):not([disabled]),
+  [role="button"]:not(:disabled):not([disabled]),
+  .btn:not(:disabled):not([disabled]),
+  button[type="button"]:not(:disabled):not([disabled]),
+  button[type="submit"]:not(:disabled):not([disabled]),
+  input[type="button"]:not(:disabled):not([disabled]),
+  input[type="submit"]:not(:disabled):not([disabled]) {
+    cursor: pointer !important;
+  }
+
+  /* Links */
+  a:not(:disabled):not([disabled]),
+  [role="link"]:not(:disabled):not([disabled]) {
+    cursor: pointer !important;
+  }
+
+  /* Disabled elements should not have pointer */
+  button:disabled,
+  button[disabled],
+  [disabled],
+  [aria-disabled="true"],
+  button[aria-disabled="true"] {
+    cursor: not-allowed !important;
+  }
+}
+
+/* Nuxt UI specific overrides */
+@layer components {
+  /* Ensure all interactive Nuxt UI components have pointer cursor */
+  /* Target Nuxt UI button elements specifically */
+  button:not(:disabled):not([disabled]):not([aria-disabled="true"]),
+  a:not([disabled]):not([aria-disabled="true"]),
+  [role="button"]:not([disabled]):not([aria-disabled="true"]),
+  [role="link"]:not([disabled]):not([aria-disabled="true"]) {
+    cursor: pointer !important;
+  }
+
+  /* Cards and divs that are clickable (common pattern) */
+  .cursor-pointer {
+    cursor: pointer !important;
+  }
+
+  /* Icon buttons - ensure icons inside buttons are also clickable */
+  button svg,
+  button [class*="icon"],
+  [role="button"] svg,
+  [role="button"] [class*="icon"] {
+    cursor: pointer !important;
+  }
+
+  /* Override for disabled buttons */
+  button[disabled],
+  button[aria-disabled="true"],
+  [data-disabled="true"],
+  [disabled] {
+    cursor: not-allowed !important;
+  }
+
+  /* Disabled buttons should not have pointer on icons either */
+  button[disabled] svg,
+  button[disabled] [class*="icon"],
+  button[aria-disabled="true"] svg,
+  button[aria-disabled="true"] [class*="icon"] {
+    cursor: not-allowed !important;
+  }
+}

@@ -133,7 +133,7 @@
                         variant="soft"
                         size="sm"
                       >
-                        {{ word.relic_type }}
+                        {{ getRelicTypeLabel(word.relic_type) }}
                       </UBadge>
                       <div class="flex items-center gap-2 flex-wrap">
                         <UBadge
@@ -392,15 +392,15 @@ const getRecommendationCount = (student: any): number => {
 }
 
 const getWordCardBorderClass = (word: any): string => {
-  if (typeof word === 'string') return 'border-l-primary'
+  if (typeof word === 'string') return 'border-l-primary-500'
   const type = word.relic_type || 'echo'
   const colors: Record<string, string> = {
     whisper: 'border-l-gray-400',
-    echo: 'border-l-primary',
-    resonance: 'border-l-secondary',
-    thunder: 'border-l-pink'
+    echo: 'border-l-primary-500',
+    resonance: 'border-l-secondary-500',
+    thunder: 'border-l-pink-500'
   }
-  return colors[type] || 'border-l-primary'
+  return colors[type] || 'border-l-primary-500'
 }
 
 const formatVocabularyLevel = (level?: string) => {
@@ -457,6 +457,16 @@ const getRelicTypeColor = (type?: string) => {
     thunder: 'pink'
   }
   return colors[type || ''] || 'gray'
+}
+
+const getRelicTypeLabel = (type?: string) => {
+  const labels: Record<string, string> = {
+    whisper: 'Easy',
+    echo: 'Basic',
+    resonance: 'Intermediate',
+    thunder: 'Advanced'
+  }
+  return labels[type || ''] || 'Basic'
 }
 
 const formatDate = (dateString?: string) => {

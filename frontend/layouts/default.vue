@@ -61,9 +61,9 @@
                 <UButton
                   to="/spark"
                   variant="ghost"
-                  :class="{ 'bg-primary/10 text-primary': $route.path === '/spark' }"
+                  :class="{ 'bg-primary/10 text-primary': $route.path === '/spark' || $route.path === '/story-spark' }"
                 >
-                  Analyze
+                  Story Spark
                 </UButton>
               </template>
             </template>
@@ -182,10 +182,10 @@
                   to="/spark"
                   variant="ghost"
                   block
-                  :class="{ 'bg-primary/10 text-primary': $route.path === '/spark' }"
+                  :class="{ 'bg-primary/10 text-primary': $route.path === '/spark' || $route.path === '/story-spark' }"
                   @click="mobileMenuOpen = false"
                 >
-                  Analyze
+                  Story Spark
                 </UButton>
               </template>
               <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
