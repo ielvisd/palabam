@@ -69,3 +69,13 @@ ENV/
 backend/data/*.json
 !backend/data/README.md
 
+# Test artifacts
+.playwright-mcp/
+*.mp4
+*.webm
+*.avi
+*.mov
+test-results/
+playwright-report/
+playwright/.cache/
+

@@ -87,6 +87,13 @@ class StoryProfiler:
         # Calculate overall vocabulary level
         vocabulary_level = self._calculate_vocabulary_level(word_scores)
         
+        # Calculate vocabulary richness metrics
+        lexical_diversity = self._calculate_lexical_diversity(word_scores)
+        sophistication_score = self._calculate_sophistication_score(word_scores)
+        
+        # Categorize words by usage quality
+        word_categories = self._categorize_words(word_scores, vocabulary_level)
+        
         # Generate resonance data
         resonance_data = {
             'vocabulary_level': vocabulary_level,
@@ -94,13 +101,18 @@ class StoryProfiler:
             'unique_words': len(word_scores),
             'relic_distribution': self._calculate_relic_distribution(word_scores),
             'themes': self._extract_themes(doc),
-            'complexity_score': self._calculate_complexity_score(word_scores)
+            'complexity_score': self._calculate_complexity_score(word_scores),
+            'lexical_diversity': lexical_diversity,
+            'sophistication_score': sophistication_score,
+            'pos_distribution': self._calculate_pos_distribution(word_scores),
+            'word_categories': word_categories
         }
         
         return {
             'word_scores': word_scores,
             'resonance_data': resonance_data,
-            'vocabulary_level': vocabulary_level
+            'vocabulary_level': vocabulary_level,
+            'word_categories': word_categories
         }
     
     def _clean_text(self, text: str) -> str:
@@ -142,23 +154,112 @@ class StoryProfiler:
         return unique_words
     
     def _calculate_vocabulary_level(self, word_scores: Dict[str, Any]) -> str:
-        """Calculate overall vocabulary level"""
+        """
+        Calculate overall vocabulary level as grade level (K-12)
+        Uses percentile-based scoring to focus on sophisticated words rather than
+        being skewed by common words (the, and, is, etc.)
+        """
         if not word_scores:
-            return 'beginner'
+            return 'K-1'
         
-        avg_difficulty = sum(
+        # Extract all difficulty scores
+        difficulties = [
             score['difficulty_score'] 
             for score in word_scores.values()
-        ) / len(word_scores)
+        ]
         
-        if avg_difficulty < 30:
-            return 'beginner'
-        elif avg_difficulty < 50:
-            return 'intermediate'
-        elif avg_difficulty < 70:
-            return 'advanced'
+        if not difficulties:
+            return 'K-1'
+        
+        # Filter out very common words (difficulty < 20) to avoid skewing
+        # These are words like "the", "and", "is" that appear in all writing
+        filtered_difficulties = [d for d in difficulties if d >= 20]
+        
+        # If we filtered out too many (less than 10% of words), use all words
+        # but use percentile-based approach
+        if len(filtered_difficulties) < len(difficulties) * 0.1:
+            filtered_difficulties = difficulties
+        
+        # Sort difficulties to calculate percentiles
+        sorted_difficulties = sorted(filtered_difficulties)
+        
+        # Use 75th percentile (top quartile) to focus on sophisticated vocabulary
+        # This represents the level of the most advanced words the student uses
+        percentile_75_index = int(len(sorted_difficulties) * 0.75)
+        if percentile_75_index >= len(sorted_difficulties):
+            percentile_75_index = len(sorted_difficulties) - 1
+        
+        # Calculate average of top 25% most difficult words
+        top_quartile = sorted_difficulties[percentile_75_index:]
+        if top_quartile:
+            representative_difficulty = sum(top_quartile) / len(top_quartile)
         else:
-            return 'expert'
+            # Fallback to median if no top quartile
+            median_index = len(sorted_difficulties) // 2
+            representative_difficulty = sorted_difficulties[median_index] if sorted_difficulties else 30
+        
+        # Map difficulty score to grade level
+        # K-1: 5-15, 2-3: 15-25, 4-5: 25-35, 6-7: 35-45, 8-9: 45-55, 10-11: 55-65, 12+: 65-75
+        if representative_difficulty < 15:
+            return 'K-1'
+        elif representative_difficulty < 25:
+            return '2-3'
+        elif representative_difficulty < 35:
+            return '4-5'
+        elif representative_difficulty < 45:
+            return '6-7'
+        elif representative_difficulty < 55:
+            return '8-9'
+        elif representative_difficulty < 65:
+            return '10-11'
+        else:
+            return '12+'
+    
+    def difficulty_to_grade_level(self, difficulty: float) -> str:
+        """Convert difficulty score to grade level"""
+        if difficulty < 15:
+            return 'K-1'
+        elif difficulty < 25:
+            return '2-3'
+        elif difficulty < 35:
+            return '4-5'
+        elif difficulty < 45:
+            return '6-7'
+        elif difficulty < 55:
+            return '8-9'
+        elif difficulty < 65:
+            return '10-11'
+        else:
+            return '12+'
+    
+    def grade_level_to_difficulty_range(self, grade_level: str) -> tuple:
+        """Convert grade level to difficulty score range"""
+        grade_ranges = {
+            'K-1': (5, 15),
+            '2-3': (15, 25),
+            '4-5': (25, 35),
+            '6-7': (35, 45),
+            '8-9': (45, 55),
+            '10-11': (55, 65),
+            '12+': (65, 75)
+        }
+        return grade_ranges.get(grade_level, (25, 35))  # Default to 4-5 grade
+    
+    def get_next_grade_levels(self, current_grade: str) -> List[str]:
+        """Get the next 1-2 grade levels for ZPD recommendations"""
+        grade_sequence = ['K-1', '2-3', '4-5', '6-7', '8-9', '10-11', '12+']
+        try:
+            current_index = grade_sequence.index(current_grade)
+            # Get next 1-2 grade levels (max at 12+)
+            next_grades = []
+            if current_index < len(grade_sequence) - 1:
+                next_grades.append(grade_sequence[current_index + 1])
+            if current_index < len(grade_sequence) - 2:
+                next_grades.append(grade_sequence[current_index + 2])
+            return next_grades if next_grades else [current_grade]  # If at 12+, stay at 12+
+        except ValueError:
+            # If grade not found, default to recommending 4-5 and 6-7
+            return ['4-5', '6-7']
     
     def _calculate_relic_distribution(self, word_scores: Dict[str, Any]) -> Dict[str, int]:
         """Calculate distribution of relic types"""
@@ -203,6 +304,128 @@ class StoryProfiler:
         
         # Normalize to 0-1
         return min(1.0, avg_difficulty / 100.0)
+    
+    def _calculate_lexical_diversity(self, word_scores: Dict[str, Any]) -> float:
+        """Calculate lexical diversity (unique words / total words)"""
+        if not word_scores:
+            return 0.0
+        
+        total_occurrences = sum(score.get('count', 1) for score in word_scores.values())
+        unique_words = len(word_scores)
+        
+        if total_occurrences == 0:
+            return 0.0
+        
+        return unique_words / total_occurrences
+    
+    def _calculate_sophistication_score(self, word_scores: Dict[str, Any]) -> float:
+        """Calculate vocabulary sophistication (proportion of advanced words)"""
+        if not word_scores:
+            return 0.0
+        
+        advanced_count = sum(
+            1 for score in word_scores.values()
+            if score.get('difficulty_score', 50) >= 60
+        )
+        
+        return advanced_count / len(word_scores)
+    
+    def _calculate_pos_distribution(self, word_scores: Dict[str, Any]) -> Dict[str, int]:
+        """Calculate part of speech distribution"""
+        pos_dist = {}
+        for score in word_scores.values():
+            pos = score.get('pos', 'UNKNOWN')
+            pos_dist[pos] = pos_dist.get(pos, 0) + 1
+        return pos_dist
+    
+    def _categorize_words(
+        self, 
+        word_scores: Dict[str, Any], 
+        vocabulary_level: str
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Categorize words into:
+        - uses_well: Words at or above student's grade level used correctly
+        - needs_practice: Words below level or used incorrectly (gaps)
+        - to_master: Words slightly above level for growth
+        
+        Args:
+            word_scores: Dictionary of word -> score data
+            vocabulary_level: Student's overall vocabulary level (e.g., '6-7')
+            
+        Returns:
+            Dictionary with categorized word lists
+        """
+        if not word_scores:
+            return {
+                'uses_well': [],
+                'needs_practice': [],
+                'to_master': []
+            }
+        
+        # Get difficulty range for student's grade level
+        student_min, student_max = self.grade_level_to_difficulty_range(vocabulary_level)
+        student_avg = (student_min + student_max) / 2
+        
+        # Get next grade level range for "to_master"
+        next_grades = self.get_next_grade_levels(vocabulary_level)
+        if next_grades:
+            next_min, next_max = self.grade_level_to_difficulty_range(next_grades[0])
+        else:
+            # If at 12+, use a higher range
+            next_min, next_max = (65, 75)
+        
+        uses_well = []
+        needs_practice = []
+        to_master = []
+        
+        for word, score_data in word_scores.items():
+            difficulty = score_data.get('difficulty_score', 50)
+            frequency = score_data.get('frequency', 0)
+            
+            word_info = {
+                'word': word,
+                'difficulty_score': difficulty,
+                'grade_level': self.difficulty_to_grade_level(difficulty),
+                'relic_type': score_data.get('relic_type', 'echo'),
+                'frequency': frequency,
+                'pos': score_data.get('pos', 'UNKNOWN'),
+                'count': score_data.get('count', 1)
+            }
+            
+            # Categorize based on difficulty relative to student level
+            if difficulty >= student_min:
+                # Word is at or above student's level - they use it well
+                uses_well.append(word_info)
+            elif difficulty < student_min - 10:
+                # Word is significantly below student's level - gap/needs practice
+                # But only if it's a common word they should know
+                if frequency > 1000:  # Common word they should know
+                    needs_practice.append(word_info)
+                else:
+                    # Rare word below level - might be intentional simple word
+                    pass
+            else:
+                # Word is slightly below level - could be a gap
+                if frequency > 500:  # Common enough they should know it
+                    needs_practice.append(word_info)
+            
+            # Words to master: in the next grade level range
+            if next_min <= difficulty <= next_max:
+                # Don't duplicate - if already in uses_well, don't add to to_master
+                if difficulty < student_min or word_info not in uses_well:
+                    to_master.append(word_info)
+        
+        # Sort each category by difficulty (descending for uses_well, ascending for others)
+        uses_well.sort(key=lambda x: x['difficulty_score'], reverse=True)
+        needs_practice.sort(key=lambda x: x['difficulty_score'])
+        to_master.sort(key=lambda x: x['difficulty_score'])
+        
+        return {
+            'uses_well': uses_well[:20],  # Top 20 words used well
+            'needs_practice': needs_practice[:15],  # Top 15 gaps
+            'to_master': to_master[:10]  # Top 10 growth words
+        }
 
 # FastAPI router
 from fastapi import APIRouter, HTTPException
@@ -229,21 +452,6 @@ async def create_profile(request: ProfileRequest):
         profiler = StoryProfiler()
         analysis = profiler.analyze_transcript(request.transcript)
         
-        # Store profile in Supabase
-        from db import profiles as db_profiles
-        
-        if request.student_id:
-            profile_id = await db_profiles.create_profile(
-                student_id=request.student_id,
-                resonance_data=analysis['resonance_data'],
-                word_scores=analysis['word_scores']
-            )
-        else:
-            # If no student_id provided, create a temporary profile
-            # In production, this should require authentication
-            profile_id = "temp-id"
-            logger.warning("No student_id provided, using temporary profile ID")
-        
         # Get recommended words from recommender
         from . import recommender
         recommender_instance = recommender.WordRecommender()
@@ -255,6 +463,32 @@ async def create_profile(request: ProfileRequest):
             count=7
         )
         recommended_words = [r['word'] for r in recommendations]
+        
+        # Store profile in Supabase
+        from db import profiles as db_profiles
+        from db import recommendations as db_recommendations
+        
+        if request.student_id:
+            profile_id = await db_profiles.create_profile(
+                student_id=request.student_id,
+                resonance_data=analysis['resonance_data'],
+                word_scores=analysis['word_scores'],
+                transcript=request.transcript,
+                vocabulary_level=analysis['vocabulary_level'],
+                recommended_words=recommended_words
+            )
+            
+            # Store recommendations in database
+            await db_recommendations.create_recommendations_batch(
+                student_id=request.student_id,
+                profile_id=profile_id,
+                recommendations=recommendations
+            )
+        else:
+            # If no student_id provided, create a temporary profile
+            # In production, this should require authentication
+            profile_id = "temp-id"
+            logger.warning("No student_id provided, using temporary profile ID")
         
         return ProfileResponse(
             profile_id=profile_id,

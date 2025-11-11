@@ -1,6 +1,11 @@
 """
 Quick API Testing Script
 Tests all Story Spark endpoints
+
+NOTE: This test requires proper Supabase Auth users to be set up.
+See TESTING_SETUP.md for instructions on creating test data.
+
+The test will fail if teachers/students don't exist in the database.
 """
 import requests
 import json
@@ -8,6 +13,10 @@ import time
 from typing import Dict, Any
 
 BASE_URL = "http://localhost:8000"
+
+# Test UUIDs - these must exist in the database with proper auth.users entries
+TEST_TEACHER_ID = "22222222-2222-2222-2222-222222222222"
+TEST_STUDENT_ID = "44444444-4444-4444-4444-444444444444"
 
 def test_health():
     """Test health endpoint"""
@@ -17,14 +26,17 @@ def test_health():
     print("✅ Health check passed")
     return response.json()
 
-def test_create_class(teacher_id: str = "test-teacher-1") -> Dict[str, Any]:
+def test_create_class(teacher_id: str = TEST_TEACHER_ID) -> Dict[str, Any]:
     """Test class creation"""
     print("\nTesting class creation...")
     response = requests.post(
         f"{BASE_URL}/api/classes/",
         json={"teacher_id": teacher_id, "name": "Test Class - API Test"}
     )
-    assert response.status_code == 200
+    if response.status_code != 200:
+        print(f"❌ Status code: {response.status_code}")
+        print(f"   Response: {response.text}")
+        raise AssertionError(f"Expected 200, got {response.status_code}: {response.text}")
     data = response.json()
     print(f"✅ Class created: {data['name']} with code {data['code']}")
     return data
@@ -125,6 +137,8 @@ def run_full_test_flow():
     print("=" * 60)
     print("PALABAM API TEST SUITE")
     print("=" * 60)
+    print("\n⚠️  NOTE: This test requires test users to be set up in Supabase.")
+    print("   See TESTING_SETUP.md for instructions.\n")
     
     try:
         # 1. Health check
@@ -139,7 +153,7 @@ def run_full_test_flow():
         test_get_class_by_code(class_code)
         
         # 4. Join class
-        student_id = "test-student-api"
+        student_id = TEST_STUDENT_ID
         test_join_class(class_code, student_id, "API Test Student")
         
         # 5. Submit story

@@ -89,3 +89,26 @@ async def get_student_submissions(student_id: str, limit: int = 50):
         logger.error(f"Error fetching submissions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/class/{class_id}")
+async def get_class_students(class_id: str):
+    """Get all students in a class"""
+    try:
+        from db import classes as db_classes
+        class_students = await db_classes.get_class_students(class_id)
+        
+        # Format response to extract student data
+        students = []
+        for item in class_students:
+            if item.get('students'):
+                student = item['students']
+                students.append({
+                    'id': student.get('id'),
+                    'name': student.get('name'),
+                    'user_id': student.get('user_id')
+                })
+        
+        return {"students": students}
+    except Exception as e:
+        logger.error(f"Error fetching class students: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

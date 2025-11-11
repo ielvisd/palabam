@@ -4,16 +4,20 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: [
     '@nuxt/ui',
-    '@nuxtjs/tailwindcss',
     '@nuxtjs/supabase',
+    '@nuxtjs/color-mode',
     '@vite-pwa/nuxt'
   ],
-  css: ['~/assets/css/tailwind.css'],
+  colorMode: {
+    preference: 'light', // default to light mode
+    fallback: 'light',
+    classSuffix: ''
+  },
+  css: ['~/assets/css/main.css'],
   supabase: {
-    redirectOptions: {
-      login: '/login',
-      callback: '/confirm'
-    }
+    redirect: false, // Disable automatic redirects since we support anonymous access
+    url: process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL,
+    key: process.env.SUPABASE_KEY || process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY
   },
   typescript: {
     strict: true

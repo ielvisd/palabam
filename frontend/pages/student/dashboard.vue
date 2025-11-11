@@ -24,6 +24,27 @@
         <p class="text-gray-600">Loading your progress...</p>
       </div>
 
+      <!-- Error State -->
+      <UAlert
+        v-else-if="error"
+        color="red"
+        variant="soft"
+        :title="error"
+        class="mb-6"
+      >
+        <template #actions>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            @click="fetchData"
+            class="mt-2"
+          >
+            Retry
+          </UButton>
+        </template>
+      </UAlert>
+
       <!-- Progress Overview -->
       <div v-else class="space-y-8">
         <!-- Stats Cards -->
@@ -74,7 +95,7 @@
                 :color="getLevelColor(progress?.vocabulary_level)"
                 class="mt-2"
               />
-              <div class="flex justify-between text-xs text-gray-500 mt-1">
+              <div class="flex justify-between text-xs text-gray-600 mt-1">
                 <span>Beginner</span>
                 <span>Intermediate</span>
                 <span>Advanced</span>
@@ -110,13 +131,13 @@
                 <p v-if="typeof word !== 'string' && word.definition" class="text-sm text-gray-600">
                   {{ word.definition }}
                 </p>
-                <p v-if="typeof word !== 'string' && word.example" class="text-sm text-gray-500 italic">
+                <p v-if="typeof word !== 'string' && word.example" class="text-sm text-gray-600 italic">
                   "{{ word.example }}"
                 </p>
               </div>
             </UCard>
           </div>
-          <UCard v-else class="text-center py-8 text-gray-500">
+          <UCard v-else class="text-center py-8 text-gray-600">
             <p>No recommendations yet. Tell a story to get started!</p>
             <UButton
               to="/story-spark"
@@ -141,7 +162,7 @@
               <div class="text-sm font-semibold capitalize">
                 {{ formatAchievementType(achievement.achievement_type) }}
               </div>
-              <div class="text-xs text-gray-500 mt-1">
+              <div class="text-xs text-gray-600 mt-1">
                 {{ formatDate(achievement.earned_at) }}
               </div>
             </UCard>
@@ -173,7 +194,7 @@
               </div>
             </UCard>
           </div>
-          <UCard v-else class="text-center py-8 text-gray-500">
+          <UCard v-else class="text-center py-8 text-gray-600">
             <p>No stories yet. Start telling stories to see your history!</p>
           </UCard>
         </div>
@@ -183,6 +204,10 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  middleware: 'student'
+})
+
 const config = useRuntimeConfig()
 const apiUrl = config.public.apiUrl || 'http://localhost:8000'
 
@@ -193,41 +218,69 @@ const recommendedWords = ref<any[]>([])
 const achievements = ref<any[]>([])
 const submissions = ref<any[]>([])
 
-// Get student ID from cookie or context
-const studentId = useCookie('student_id').value || 'temp-student-id'
+// Get student ID from auth
+const { getStudentId } = useAuth()
+const studentId = ref<string | null>(null)
+const error = ref<string | null>(null)
 
 // Fetch all data
 const fetchData = async () => {
+  if (!studentId.value) return
+  
   loading.value = true
+  error.value = null
   try {
     // Fetch progress
-    const progressRes = await $fetch(`${apiUrl}/api/students/${studentId}/progress`)
+    const progressRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/progress`)
     progress.value = progressRes
 
     // Fetch recommendations
-    const recRes = await $fetch(`${apiUrl}/api/students/${studentId}/recommendations`)
+    const recRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/recommendations`)
     recommendedWords.value = recRes.recommended_words || []
 
     // Fetch achievements
-    const achievementsRes = await $fetch(`${apiUrl}/api/students/${studentId}/achievements`)
+    const achievementsRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/achievements`)
     achievements.value = achievementsRes.achievements || []
 
     // Fetch submissions
-    const submissionsRes = await $fetch(`${apiUrl}/api/students/${studentId}/submissions`)
+    const submissionsRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/submissions`)
     submissions.value = submissionsRes.submissions || []
-  } catch (error) {
-    console.error('Failed to fetch data:', error)
+  } catch (err: any) {
+    console.error('Failed to fetch data:', err)
+    error.value = err.message || 'Failed to load dashboard data. Please try again.'
   } finally {
     loading.value = false
   }
 }
 
+// Initialize student ID and fetch data
+onMounted(async () => {
+  const id = await getStudentId()
+  studentId.value = id || useCookie('student_id').value || null
+  
+  if (studentId.value) {
+    await fetchData()
+  } else {
+    error.value = 'Student ID not found. Please join a class first.'
+    loading.value = false
+  }
+})
+
 const getLevelColor = (level?: string) => {
+  // Grade levels: K-1, 2-3, 4-5, 6-7, 8-9, 10-11, 12+
   const colors: Record<string, string> = {
-    beginner: 'blue',
-    intermediate: 'green',
-    advanced: 'purple',
-    expert: 'red'
+    'K-1': 'primary',
+    '2-3': 'primary',
+    '4-5': 'teal',
+    '6-7': 'teal',
+    '8-9': 'yellow',
+    '10-11': 'yellow',
+    '12+': 'pink',
+    // Legacy support for old categories
+    beginner: 'primary',
+    intermediate: 'teal',
+    advanced: 'yellow',
+    expert: 'pink'
   }
   return colors[level || ''] || 'gray'
 }

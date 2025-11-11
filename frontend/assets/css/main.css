@@ -1,0 +1,137 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* Palabam Color Theme */
+:root {
+  /* Primary Colors */
+  --color-primary-50: #e6f4f8;
+  --color-primary-100: #b3e0ed;
+  --color-primary-200: #80cce2;
+  --color-primary-300: #4db8d7;
+  --color-primary-400: #1aa4cc;
+  --color-primary-500: #118AB2; /* Primary Blue */
+  --color-primary-600: #0e6f8f;
+  --color-primary-700: #0b546c;
+  --color-primary-800: #083949;
+  --color-primary-900: #051e26;
+  
+  /* Secondary/Teal Colors */
+  --color-teal-50: #e6faf5;
+  --color-teal-100: #b3f0e0;
+  --color-teal-200: #80e6cb;
+  --color-teal-300: #4ddcb6;
+  --color-teal-400: #1ad2a1;
+  --color-teal-500: #06D6A0; /* Secondary Teal */
+  --color-teal-600: #05ab80;
+  --color-teal-700: #048060;
+  --color-teal-800: #035540;
+  --color-teal-900: #022a20;
+  
+  /* Accent/Yellow Colors */
+  --color-yellow-50: #fff9e6;
+  --color-yellow-100: #ffedb3;
+  --color-yellow-200: #ffe180;
+  --color-yellow-300: #ffd54d;
+  --color-yellow-400: #ffc91a;
+  --color-yellow-500: #FFD166; /* Accent Yellow */
+  --color-yellow-600: #cca752;
+  --color-yellow-700: #997d3d;
+  --color-yellow-800: #665329;
+  --color-yellow-900: #332914;
+  
+  /* Danger/Pink Colors */
+  --color-pink-50: #fde8ec;
+  --color-pink-100: #f9b8c5;
+  --color-pink-200: #f5889e;
+  --color-pink-300: #f15877;
+  --color-pink-400: #ed2850;
+  --color-pink-500: #EF476F; /* Danger Pink */
+  --color-pink-600: #bf3959;
+  --color-pink-700: #8f2b43;
+  --color-pink-800: #5f1c2d;
+  --color-pink-900: #2f0e17;
+  
+  /* Dark/Navy Colors */
+  --color-navy-50: #e6eef0;
+  --color-navy-100: #b3c9d0;
+  --color-navy-200: #80a4b0;
+  --color-navy-300: #4d7f90;
+  --color-navy-400: #1a5a70;
+  --color-navy-500: #073B4C; /* Dark Navy */
+  --color-navy-600: #062f3d;
+  --color-navy-700: #04232e;
+  --color-navy-800: #03171f;
+  --color-navy-900: #010b0f;
+}
+
+/* Apply theme colors globally */
+@layer base {
+  :root {
+    --color-primary: var(--color-primary-500);
+    --color-secondary: var(--color-teal-500);
+    --color-accent: var(--color-yellow-500);
+    --color-danger: var(--color-pink-500);
+  }
+  
+  /* Custom utility classes for theme colors - using Tailwind classes */
+  .bg-primary { background-color: #118AB2 !important; }
+  .bg-secondary { background-color: #06D6A0 !important; }
+  .bg-accent { background-color: #FFD166 !important; }
+  .bg-danger { background-color: #EF476F !important; }
+  .bg-navy { background-color: #073B4C !important; }
+  
+  .text-primary { color: #118AB2 !important; }
+  .text-secondary { color: #06D6A0 !important; }
+  .text-accent { color: #FFD166 !important; }
+  .text-danger { color: #EF476F !important; }
+  .text-navy { color: #073B4C !important; }
+  
+  .border-primary { border-color: #118AB2 !important; }
+  .border-secondary { border-color: #06D6A0 !important; }
+  .border-accent { border-color: #FFD166 !important; }
+  .border-danger { border-color: #EF476F !important; }
+  .border-navy { border-color: #073B4C !important; }
+}
+
+/* Override Nuxt UI default colors with theme colors */
+@layer components {
+  [data-color="primary"] {
+    --color-primary-500: #118AB2;
+    --color-primary-600: #0e6f8f;
+    --color-primary-700: #0b546c;
+  }
+  
+  [data-color="teal"] {
+    --color-teal-500: #06D6A0;
+    --color-teal-600: #05ab80;
+    --color-teal-700: #048060;
+  }
+  
+  [data-color="yellow"] {
+    --color-yellow-500: #FFD166;
+    --color-yellow-600: #cca752;
+    --color-yellow-700: #997d3d;
+  }
+  
+  [data-color="pink"] {
+    --color-pink-500: #EF476F;
+    --color-pink-600: #bf3959;
+    --color-pink-700: #8f2b43;
+  }
+}
+
+/* Improve placeholder text contrast - using Tailwind classes via theme config */
+@layer base {
+  /* This is handled by app.config.ts now, but keeping as fallback */
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(75 85 99); /* gray-600 for better contrast */
+    opacity: 1;
+  }
+  
+  input:disabled::placeholder,
+  textarea:disabled::placeholder {
+    color: rgb(156 163 175); /* gray-400 for disabled */
+    opacity: 1;
+  }
+}

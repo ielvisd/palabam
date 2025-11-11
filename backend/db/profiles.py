@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 async def create_profile(
     student_id: str,
     resonance_data: Dict[str, Any],
-    word_scores: Dict[str, Any]
+    word_scores: Dict[str, Any],
+    transcript: Optional[str] = None,
+    vocabulary_level: Optional[str] = None,
+    recommended_words: Optional[list] = None
 ) -> str:
     """
     Create a new relic resonance profile in the database
@@ -22,6 +25,9 @@ async def create_profile(
         student_id: UUID of the student
         resonance_data: Profile resonance metadata
         word_scores: Word difficulty scores
+        transcript: Original transcript text (optional)
+        vocabulary_level: Overall vocabulary level (optional)
+        recommended_words: List of recommended words (optional)
         
     Returns:
         Profile ID (UUID as string)
@@ -37,6 +43,13 @@ async def create_profile(
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
         }
+        
+        if transcript is not None:
+            profile_data["transcript"] = transcript
+        if vocabulary_level is not None:
+            profile_data["vocabulary_level"] = vocabulary_level
+        if recommended_words is not None:
+            profile_data["recommended_words"] = recommended_words
         
         result = supabase.table("profiles").insert(profile_data).execute()
         

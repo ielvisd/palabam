@@ -21,9 +21,9 @@
               class="text-center text-2xl font-mono tracking-widest uppercase"
               @input="classCode = classCode.toUpperCase().replace(/[^A-Z0-9]/g, '')"
             />
-            <p class="text-xs text-gray-500 mt-2">
-              Ask your teacher for the class code if you don't have it
-            </p>
+        <p class="text-xs text-gray-600 mt-2">
+          Ask your teacher for the class code if you don't have it
+        </p>
           </div>
 
           <!-- Student Name Input -->
@@ -79,6 +79,7 @@
                 <UButton
                   to="/student/dashboard"
                   variant="outline"
+                  color="neutral"
                   size="lg"
                   block
                 >
@@ -91,7 +92,7 @@
       </UCard>
 
       <!-- Help Text -->
-      <div class="mt-6 text-center text-sm text-gray-500">
+      <div class="mt-6 text-center text-sm text-gray-600">
         <p>Don't have a class code? Ask your teacher to create a class and share the code with you.</p>
       </div>
     </div>
@@ -99,8 +100,13 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  middleware: 'student'
+})
+
 const config = useRuntimeConfig()
 const apiUrl = config.public.apiUrl || 'http://localhost:8000'
+const { getStudentId } = useAuth()
 
 // State
 const classCode = ref('')
@@ -117,6 +123,12 @@ const canJoin = computed(() => {
 const joinClass = async () => {
   if (!canJoin.value) return
 
+  // Additional validation
+  if (studentName.value.trim().length < 2) {
+    error.value = 'Please enter a valid name (at least 2 characters).'
+    return
+  }
+
   isJoining.value = true
   error.value = null
 
@@ -132,9 +144,14 @@ const joinClass = async () => {
 
     classData.value = validateRes
 
-    // TODO: Create student account if doesn't exist
-    // For now, using a simplified approach
-    const studentId = useCookie('student_id').value || `student-${Date.now()}`
+    // Get student ID from auth (authentication required)
+    const studentId = await getStudentId()
+    
+    if (!studentId) {
+      error.value = 'You must be signed in to join a class. Please sign in first.'
+      isJoining.value = false
+      return
+    }
 
     // Join class
     const response = await $fetch(`${apiUrl}/api/classes/join`, {
@@ -142,21 +159,31 @@ const joinClass = async () => {
       body: {
         code: classCode.value,
         student_id: studentId,
-        student_name: studentName.value
+        student_name: studentName.value.trim()
       }
     })
 
     if (response.success) {
-      // Store student ID in cookie
-      useCookie('student_id').value = studentId
-      useCookie('student_name').value = studentName.value
+      // Store student name in cookie if not already set
+      if (!useCookie('student_name').value) {
+        useCookie('student_name').value = studentName.value.trim()
+      }
       
       joinSuccess.value = true
     } else {
       error.value = response.message || 'Failed to join class'
     }
   } catch (err: any) {
-    error.value = err.message || 'Failed to join class. Please try again.'
+    // Better error handling
+    if (err.statusCode === 404 || err.message?.includes('not found')) {
+      error.value = 'Class code not found. Please check and try again.'
+    } else if (err.statusCode === 400) {
+      error.value = err.message || 'Invalid request. Please check your input.'
+    } else if (err.statusCode >= 500) {
+      error.value = 'Server error. Please try again later.'
+    } else {
+      error.value = err.message || 'Failed to join class. Please try again.'
+    }
     console.error('Join class error:', err)
   } finally {
     isJoining.value = false

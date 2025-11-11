@@ -3,16 +3,10 @@
     <UCard>
       <template #header>
         <div class="flex items-center justify-between">
-          <h1 class="text-3xl font-bold">Story Spark</h1>
-          <USwitch
-            v-model="isVoiceMode"
-            @update:model-value="toggleInputMode"
-            label="Voice Mode"
-            color="primary"
-          />
+          <h1 class="text-3xl font-bold">Redirecting...</h1>
         </div>
         <p class="text-gray-600 mt-2">
-          Tell me about your day, a story, or anything! I'll analyze your words and create your vocabulary profile.
+          Taking you to Story Spark...
         </p>
       </template>
 
@@ -136,91 +130,18 @@
 </template>
 
 <script setup lang="ts">
-const {
-  isVoiceMode,
-  isRecording,
-  transcript,
-  error,
-  startRecording,
-  stopRecording,
-  toggleInputMode
-} = useVocabInput()
-
-const textInput = ref('')
-const isProcessing = ref(false)
-const processingProgress = ref(0)
-const processingStatus = ref('')
-const profileResult = ref<{
-  recommendedWords: string[]
-  resonanceData: any
-} | null>(null)
-
-const canSubmit = computed(() => {
-  if (isVoiceMode.value) {
-    return transcript.value.length > 0
-  }
-  return textInput.value.trim().length > 0
+definePageMeta({
+  middleware: 'auth'
 })
 
-const handleVoiceInput = () => {
-  if (isRecording.value) {
-    stopRecording()
-  } else {
-    startRecording()
-  }
-}
-
-const submitStory = async () => {
-  if (!canSubmit.value) return
-
-  isProcessing.value = true
-  processingProgress.value = 0
-  processingStatus.value = 'Sending your story...'
-
-  try {
-    const inputText = isVoiceMode.value ? transcript.value : textInput.value
-
-    processingProgress.value = 30
-    processingStatus.value = 'Analyzing with AI...'
-
-    const config = useRuntimeConfig()
-    const apiUrl = config.public.apiUrl || 'http://localhost:8000'
-    
-    const response = await $fetch(`${apiUrl}/api/profile/`, {
-      method: 'POST',
-      body: {
-        transcript: inputText,
-        inputMode: isVoiceMode.value ? 'voice' : 'text',
-        student_id: null // TODO: Get from auth
-      }
-    })
-
-    processingProgress.value = 70
-    processingStatus.value = 'Generating recommendations...'
-
-    // Simulate processing delay for UX
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    processingProgress.value = 100
-    processingStatus.value = 'Complete!'
-
-    profileResult.value = response as any
-
-    // Reset form after a delay
-    setTimeout(() => {
-      textInput.value = ''
-      transcript.value = ''
-      isProcessing.value = false
-    }, 2000)
-  } catch (err: any) {
-    error.value = err.message || 'Failed to create profile. Please try again.'
-    isProcessing.value = false
-  }
-}
-
-// Set page metadata
+// Redirect to the main Story Spark page
 useHead({
   title: 'Story Spark - Palabam'
+})
+
+// Redirect immediately
+onMounted(() => {
+  navigateTo('/story-spark')
 })
 </script>
 

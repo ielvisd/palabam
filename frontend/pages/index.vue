@@ -2,9 +2,9 @@
   <UContainer>
     <div class="py-12">
       <div class="text-center mb-12">
-        <h1 class="text-5xl font-bold mb-4">Palabam</h1>
-        <p class="text-xl text-gray-600 mb-2">Personalized Vocabulary Recommendation Engine</p>
-        <p class="text-gray-500">Automate vocabulary gap detection and provide personalized word recommendations for your students</p>
+        <h1 class="text-5xl font-bold mb-4 dark:text-white">Palabam</h1>
+        <p class="text-xl text-gray-600 dark:text-gray-300 mb-2">Personalized Vocabulary Recommendation Engine</p>
+        <p class="text-gray-500 dark:text-gray-400">Automate vocabulary gap detection and provide personalized word recommendations for your students</p>
       </div>
 
       <!-- Feature Cards -->
@@ -12,8 +12,8 @@
         <UCard>
           <div class="text-center">
             <UIcon name="i-heroicons-document-text" class="text-4xl text-primary mb-4" />
-            <h3 class="text-xl font-semibold mb-2">Analyze Transcripts</h3>
-            <p class="text-gray-600">
+            <h3 class="text-xl font-semibold mb-2 dark:text-white">Analyze Transcripts</h3>
+            <p class="text-gray-600 dark:text-gray-300">
               Upload or paste student conversation transcripts and writing samples for AI-powered analysis
             </p>
           </div>
@@ -22,8 +22,8 @@
         <UCard>
           <div class="text-center">
             <UIcon name="i-heroicons-light-bulb" class="text-4xl text-primary mb-4" />
-            <h3 class="text-xl font-semibold mb-2">Get Recommendations</h3>
-            <p class="text-gray-600">
+            <h3 class="text-xl font-semibold mb-2 dark:text-white">Get Recommendations</h3>
+            <p class="text-gray-600 dark:text-gray-300">
               Receive 5-7 personalized vocabulary words tailored to each student's proficiency level
             </p>
           </div>
@@ -32,8 +32,8 @@
         <UCard>
           <div class="text-center">
             <UIcon name="i-heroicons-chart-bar" class="text-4xl text-primary mb-4" />
-            <h3 class="text-xl font-semibold mb-2">Track Progress</h3>
-            <p class="text-gray-600">
+            <h3 class="text-xl font-semibold mb-2 dark:text-white">Track Progress</h3>
+            <p class="text-gray-600 dark:text-gray-300">
               View all student recommendations in one dashboard and export for lesson planning
             </p>
           </div>
@@ -42,53 +42,115 @@
 
       <!-- Action Buttons -->
       <div class="space-y-4">
-        <div class="text-center mb-4">
-          <h2 class="text-2xl font-semibold mb-2">For Educators</h2>
+        <div v-if="!user" class="text-center">
+          <h2 class="text-2xl font-semibold mb-4 dark:text-white">Get Started</h2>
+          <p class="text-gray-600 dark:text-gray-400 mb-6">
+            Sign in or create an account to access Palabam
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <UButton
+              to="/login"
+              size="xl"
+              color="primary"
+              class="w-full sm:w-auto"
+            >
+              <UIcon name="i-heroicons-arrow-right-on-rectangle" class="mr-2" />
+              Sign In
+            </UButton>
+            <UButton
+              to="/signup"
+              size="xl"
+              variant="outline"
+              color="neutral"
+              class="w-full sm:w-auto"
+            >
+              <UIcon name="i-heroicons-user-plus" class="mr-2" />
+              Sign Up (Parent/Teacher)
+            </UButton>
+          </div>
+          <UAlert
+            color="info"
+            variant="soft"
+            title="Student Signup"
+            description="Students must sign up via an invite link from their teacher. Please contact your teacher for an invite link."
+            class="mt-6 max-w-2xl mx-auto"
+          />
         </div>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <UButton
-            to="/spark"
-            size="xl"
-            color="primary"
-            class="w-full sm:w-auto"
-          >
-            <UIcon name="i-heroicons-sparkles" class="mr-2" />
-            Analyze Transcript
-          </UButton>
-          <UButton
-            to="/dashboard"
-            size="xl"
-            variant="outline"
-            class="w-full sm:w-auto"
-          >
-            <UIcon name="i-heroicons-squares-2x2" class="mr-2" />
-            View Dashboard
-          </UButton>
-        </div>
-        
-        <div class="text-center my-8">
-          <div class="border-t border-gray-300 my-6"></div>
-          <h2 class="text-2xl font-semibold mb-2">For Students</h2>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <UButton
-            to="/join-class"
-            size="xl"
-            color="primary"
-            class="w-full sm:w-auto"
-          >
-            <UIcon name="i-heroicons-user-plus" class="mr-2" />
-            Join Class
-          </UButton>
-          <UButton
-            to="/story-spark"
-            size="xl"
-            variant="outline"
-            class="w-full sm:w-auto"
-          >
-            <UIcon name="i-heroicons-sparkles" class="mr-2" />
-            Tell a Story
-          </UButton>
+
+        <div v-else class="space-y-6">
+          <!-- Parent Actions -->
+          <template v-if="userRole === 'parent'">
+            <div class="text-center mb-4">
+              <h2 class="text-2xl font-semibold mb-2 dark:text-white">Parent Portal</h2>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <UButton
+                to="/parent/dashboard"
+                size="xl"
+                color="primary"
+                class="w-full sm:w-auto"
+              >
+                <UIcon name="i-heroicons-squares-2x2" class="mr-2" />
+                View Dashboard
+              </UButton>
+            </div>
+          </template>
+
+          <!-- Student Actions -->
+          <template v-else-if="userRole === 'student'">
+            <div class="text-center mb-4">
+              <h2 class="text-2xl font-semibold mb-2 dark:text-white">Student Portal</h2>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <UButton
+                to="/student/dashboard"
+                size="xl"
+                color="primary"
+                class="w-full sm:w-auto"
+              >
+                <UIcon name="i-heroicons-chart-bar" class="mr-2" />
+                My Progress
+              </UButton>
+              <UButton
+                to="/story-spark"
+                size="xl"
+                variant="outline"
+                color="neutral"
+                class="w-full sm:w-auto"
+              >
+                <UIcon name="i-heroicons-sparkles" class="mr-2" />
+                Tell a Story
+              </UButton>
+            </div>
+          </template>
+
+          <!-- Teacher Actions -->
+          <template v-else-if="userRole === 'teacher'">
+            <div class="text-center mb-4">
+              <h2 class="text-2xl font-semibold mb-2 dark:text-white">Educator Portal</h2>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <UButton
+                to="/dashboard"
+                size="xl"
+                color="primary"
+                class="w-full sm:w-auto"
+              >
+                <UIcon name="i-heroicons-squares-2x2" class="mr-2" />
+                View Dashboard
+              </UButton>
+              <UButton
+                to="/teacher/invites"
+                size="xl"
+                variant="outline"
+                color="neutral"
+                class="w-full sm:w-auto"
+              >
+                <UIcon name="i-heroicons-envelope" class="mr-2" />
+                Send Invites
+              </UButton>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -97,25 +159,25 @@
         <UCard>
           <div class="text-center">
             <div class="text-3xl font-bold text-primary">{{ stats.totalStudents || 0 }}</div>
-            <div class="text-sm text-gray-600 mt-1">Students</div>
+            <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">Students</div>
           </div>
         </UCard>
         <UCard>
           <div class="text-center">
-            <div class="text-3xl font-bold text-green-600">{{ stats.totalProfiles || 0 }}</div>
-            <div class="text-sm text-gray-600 mt-1">Profiles Analyzed</div>
+            <div class="text-3xl font-bold text-green-600 dark:text-green-400">{{ stats.totalProfiles || 0 }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">Profiles Analyzed</div>
           </div>
         </UCard>
         <UCard>
           <div class="text-center">
-            <div class="text-3xl font-bold text-blue-600">{{ stats.totalRecommendations || 0 }}</div>
-            <div class="text-sm text-gray-600 mt-1">Words Recommended</div>
+            <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ stats.totalRecommendations || 0 }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">Words Recommended</div>
           </div>
         </UCard>
         <UCard>
           <div class="text-center">
-            <div class="text-3xl font-bold text-purple-600">{{ stats.avgWordsPerStudent || 0 }}</div>
-            <div class="text-sm text-gray-600 mt-1">Avg Words/Student</div>
+            <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ stats.avgWordsPerStudent || 0 }}</div>
+            <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">Avg Words/Student</div>
           </div>
         </UCard>
       </div>
@@ -124,6 +186,25 @@
 </template>
 
 <script setup lang="ts">
+const { user, getUserRole } = useAuth()
+const userRole = ref<'parent' | 'student' | 'teacher' | 'admin' | null>(null)
+
+// Fetch user role
+onMounted(async () => {
+  if (user.value) {
+    userRole.value = await getUserRole()
+  }
+})
+
+// Watch for auth changes
+watch(user, async (newUser) => {
+  if (newUser) {
+    userRole.value = await getUserRole()
+  } else {
+    userRole.value = null
+  }
+})
+
 // Optional: Fetch stats from API
 const stats = ref<{
   totalStudents?: number
