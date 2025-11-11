@@ -742,15 +742,44 @@ async def recommend_words(request: RecommendRequest):
 
 @router.get("/student/{student_id}")
 async def get_student_recommendations(student_id: str):
-    """Get recommendations for a student from database"""
+    """Get recommendations for a student from database, or regenerate from profile if none exist"""
     try:
         from db import recommendations as db_recommendations
+        from db import profiles as db_profiles
         
+        # First, try to get stored recommendations from database
         recs = await db_recommendations.get_student_recommendations(
             student_id=student_id,
             status="pending",
             limit=20
         )
+        
+        # If no recommendations found in database, regenerate from latest profile
+        if not recs:
+            profiles = await db_profiles.get_student_profiles(student_id)
+            if profiles:
+                latest_profile = profiles[0]  # Already sorted by created_at desc
+                
+                # Regenerate recommendations from profile
+                recommender_instance = WordRecommender()
+                recommendations = await recommender_instance.recommend_words(
+                    profile={
+                        'word_scores': latest_profile.get('word_scores', {}),
+                        'resonance_data': latest_profile.get('resonance_data', {})
+                    },
+                    count=7
+                )
+                
+                # Store the regenerated recommendations
+                if recommendations:
+                    await db_recommendations.create_recommendations_batch(
+                        student_id=student_id,
+                        profile_id=latest_profile.get('id'),
+                        recommendations=recommendations
+                    )
+                    recs = recommendations
+                else:
+                    recs = []
         
         return {"recommended_words": recs}
     except Exception as e:

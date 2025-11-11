@@ -157,3 +157,95 @@ async def get_student_classes(student_id: str) -> List[Dict[str, Any]]:
         logger.error(f"Error fetching classes for student {student_id}: {e}")
         return []
 
+async def delete_class(class_id: str, teacher_id: str) -> bool:
+    """
+    Delete a class after verifying teacher ownership
+    
+    Args:
+        class_id: UUID of the class to delete
+        teacher_id: UUID of the teacher (for verification)
+        
+    Returns:
+        True if successful, False if class not found or not owned by teacher
+        
+    Raises:
+        Exception if deletion fails
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # First verify the class exists and belongs to the teacher
+        class_check = supabase.table("classes").select("id, teacher_id").eq("id", class_id).single().execute()
+        
+        if not class_check.data:
+            logger.warning(f"Class {class_id} not found")
+            return False
+        
+        if class_check.data.get("teacher_id") != teacher_id:
+            logger.warning(f"Teacher {teacher_id} does not own class {class_id}")
+            return False
+        
+        # Delete the class (cascade will handle class_students and invites)
+        result = supabase.table("classes").delete().eq("id", class_id).execute()
+        
+        if result.data:
+            logger.info(f"Successfully deleted class {class_id}")
+            return True
+        else:
+            logger.warning(f"Class {class_id} deletion returned no data")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error deleting class {class_id}: {e}")
+        raise
+
+async def remove_student_from_class(class_id: str, student_id: str, teacher_id: str) -> bool:
+    """
+    Remove a student from a class after verifying teacher ownership
+    
+    Args:
+        class_id: UUID of the class
+        student_id: UUID of the student to remove
+        teacher_id: UUID of the teacher (for verification)
+        
+    Returns:
+        True if successful, False if class not found, student not in class, or not owned by teacher
+        
+    Raises:
+        Exception if removal fails
+    """
+    try:
+        supabase = get_supabase_client()
+        
+        # First verify the class exists and belongs to the teacher
+        class_check = supabase.table("classes").select("id, teacher_id").eq("id", class_id).single().execute()
+        
+        if not class_check.data:
+            logger.warning(f"Class {class_id} not found")
+            return False
+        
+        if class_check.data.get("teacher_id") != teacher_id:
+            logger.warning(f"Teacher {teacher_id} does not own class {class_id}")
+            return False
+        
+        # Check if student is in the class
+        enrollment_check = supabase.table("class_students").select("id").eq("class_id", class_id).eq("student_id", student_id).execute()
+        
+        if not enrollment_check.data:
+            logger.warning(f"Student {student_id} is not enrolled in class {class_id}")
+            return False
+        
+        # Remove student from class
+        result = supabase.table("class_students").delete().eq("class_id", class_id).eq("student_id", student_id).execute()
+        
+        if result.data:
+            logger.info(f"Successfully removed student {student_id} from class {class_id}")
+            return True
+        else:
+            logger.warning(f"Removal of student {student_id} from class {class_id} returned no data")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error removing student {student_id} from class {class_id}: {e}")
+        raise
+

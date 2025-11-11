@@ -126,3 +126,47 @@ async def get_class_students(class_id: str):
         logger.error(f"Error fetching class students: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/{class_id}")
+async def delete_class(class_id: str, teacher_id: str):
+    """
+    Delete a class (teacher must own the class)
+    
+    Args:
+        class_id: UUID of the class to delete
+        teacher_id: UUID of the teacher (query parameter)
+    """
+    try:
+        success = await db_classes.delete_class(class_id, teacher_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Class not found or you don't have permission to delete it")
+        return {"success": True, "message": "Class deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting class: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{class_id}/students/{student_id}")
+async def remove_student_from_class(class_id: str, student_id: str, teacher_id: str):
+    """
+    Remove a student from a class (teacher must own the class)
+    
+    Args:
+        class_id: UUID of the class
+        student_id: UUID of the student to remove
+        teacher_id: UUID of the teacher (query parameter)
+    """
+    try:
+        success = await db_classes.remove_student_from_class(class_id, student_id, teacher_id)
+        if not success:
+            raise HTTPException(
+                status_code=404, 
+                detail="Class not found, student not in class, or you don't have permission to remove them"
+            )
+        return {"success": True, "message": "Student removed from class successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing student from class: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

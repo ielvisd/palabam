@@ -89,6 +89,25 @@ async def get_student_submissions(student_id: str, limit: int = 50):
         logger.error(f"Error fetching submissions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/{student_id}")
+async def get_student(student_id: str):
+    """Get student information by ID"""
+    try:
+        from db.supabase_client import get_supabase_client
+        supabase = get_supabase_client()
+        
+        result = supabase.table("students").select("id, name, user_id").eq("id", student_id).maybe_single().execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        return result.data
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching student: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/class/{class_id}")
 async def get_class_students(class_id: str):
     """Get all students in a class"""

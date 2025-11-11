@@ -14,7 +14,9 @@ from supabase import create_client
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from db.supabase_client import get_supabase_client
+from db import classes as db_classes
 from dotenv import load_dotenv
+import asyncio
 
 # Load environment variables
 load_dotenv()
@@ -127,6 +129,9 @@ def create_demo_teacher(email: str = "teacher@gauntlet.com", name: str = "Demo T
         email: Teacher email
         name: Teacher name
         password: Password for the account
+        
+    Returns:
+        Teacher ID if successful, None otherwise
     """
     print(f"\nCreating demo teacher account: {email}")
     
@@ -173,7 +178,7 @@ def create_demo_teacher(email: str = "teacher@gauntlet.com", name: str = "Demo T
         
         if not auth_user:
             print(f"  ✗ Failed to create auth user for {email}")
-            return False
+            return None
         
         user_id = auth_user.get("id")
         print(f"  ✓ Auth user created (ID: {user_id})")
@@ -194,7 +199,7 @@ def create_demo_teacher(email: str = "teacher@gauntlet.com", name: str = "Demo T
     existing_teacher = supabase.table("teachers").select("id").eq("user_id", user_id).execute()
     if existing_teacher.data:
         print(f"  ⚠️  Teacher record already exists (ID: {existing_teacher.data[0]['id']})")
-        return True
+        return existing_teacher.data[0]['id']
     
     # Create teacher record
     print("  Creating teacher record...")
@@ -205,17 +210,18 @@ def create_demo_teacher(email: str = "teacher@gauntlet.com", name: str = "Demo T
         }).execute()
         
         if teacher_result.data:
-            print(f"  ✓ Teacher record created (ID: {teacher_result.data[0]['id']})")
+            teacher_id = teacher_result.data[0]['id']
+            print(f"  ✓ Teacher record created (ID: {teacher_id})")
             print(f"\n  ✅ Demo teacher account created successfully!")
             print(f"     Email: {email}")
             print(f"     Password: {password}")
-            return True
+            return teacher_id
         else:
             print("  ✗ Failed to create teacher record")
-            return False
+            return None
     except Exception as e:
         print(f"  ✗ Error creating teacher record: {e}")
-        return False
+        return None
 
 def create_demo_student(email: str = "sally-sixth-grader@gauntlet.com", name: str = "Sally Sixth Grader", password: str = "demo123456"):
     """
@@ -225,6 +231,9 @@ def create_demo_student(email: str = "sally-sixth-grader@gauntlet.com", name: st
         email: Student email
         name: Student name
         password: Password for the account
+        
+    Returns:
+        Student ID if successful, None otherwise
     """
     print(f"\nCreating demo student account: {email}")
     
@@ -271,7 +280,7 @@ def create_demo_student(email: str = "sally-sixth-grader@gauntlet.com", name: st
         
         if not auth_user:
             print(f"  ✗ Failed to create auth user for {email}")
-            return False
+            return None
         
         user_id = auth_user.get("id")
         print(f"  ✓ Auth user created (ID: {user_id})")
@@ -292,7 +301,7 @@ def create_demo_student(email: str = "sally-sixth-grader@gauntlet.com", name: st
     existing_student = supabase.table("students").select("id").eq("user_id", user_id).execute()
     if existing_student.data:
         print(f"  ⚠️  Student record already exists (ID: {existing_student.data[0]['id']})")
-        return True
+        return existing_student.data[0]['id']
     
     # Create student record
     print("  Creating student record...")
@@ -303,16 +312,67 @@ def create_demo_student(email: str = "sally-sixth-grader@gauntlet.com", name: st
         }).execute()
         
         if student_result.data:
-            print(f"  ✓ Student record created (ID: {student_result.data[0]['id']})")
+            student_id = student_result.data[0]['id']
+            print(f"  ✓ Student record created (ID: {student_id})")
             print(f"\n  ✅ Demo student account created successfully!")
             print(f"     Email: {email}")
             print(f"     Password: {password}")
-            return True
+            return student_id
         else:
             print("  ✗ Failed to create student record")
-            return False
+            return None
     except Exception as e:
         print(f"  ✗ Error creating student record: {e}")
+        return None
+
+def create_demo_class(teacher_id: str, name: str) -> Optional[str]:
+    """
+    Create a demo class for a teacher
+    
+    Args:
+        teacher_id: Teacher ID (from teachers table)
+        name: Class name
+        
+    Returns:
+        Class ID if successful, None otherwise
+    """
+    print(f"\nCreating demo class: {name}")
+    try:
+        # Use asyncio to run the async function
+        class_data = asyncio.run(db_classes.create_class(teacher_id, name))
+        if class_data:
+            class_id = class_data.get("id")
+            code = class_data.get("code")
+            print(f"  ✓ Class created (ID: {class_id}, Code: {code})")
+            return class_id
+        else:
+            print("  ✗ Failed to create class")
+            return None
+    except Exception as e:
+        print(f"  ✗ Error creating class: {e}")
+        return None
+
+def assign_student_to_class(class_id: str, student_id: str) -> bool:
+    """
+    Assign a student to a class
+    
+    Args:
+        class_id: Class ID
+        student_id: Student ID
+        
+    Returns:
+        True if successful, False if already assigned or failed
+    """
+    try:
+        # Use asyncio to run the async function
+        success = asyncio.run(db_classes.join_class(class_id, student_id))
+        if success:
+            print(f"  ✓ Student assigned to class")
+        else:
+            print(f"  ⚠️  Student already in class or assignment failed")
+        return success
+    except Exception as e:
+        print(f"  ✗ Error assigning student to class: {e}")
         return False
 
 def main():
@@ -322,26 +382,93 @@ def main():
     print("=" * 60)
     
     # Create teacher account
-    teacher_success = create_demo_teacher()
+    teacher_id = create_demo_teacher()
+    if not teacher_id:
+        print("\n❌ Failed to create teacher account. Cannot proceed.")
+        return 1
     
-    # Create student account
-    student_success = create_demo_student()
+    # Create student accounts with realistic names
+    student_data = [
+        ("sally-sixth-grader@gauntlet.com", "Sally Sixth Grader"),
+        ("emma.johnson@gauntlet.com", "Emma Johnson"),
+        ("marcus.chen@gauntlet.com", "Marcus Chen"),
+        ("sofia.rodriguez@gauntlet.com", "Sofia Rodriguez"),
+        ("james.wilson@gauntlet.com", "James Wilson"),
+        ("mia.patel@gauntlet.com", "Mia Patel"),
+        ("ethan.brown@gauntlet.com", "Ethan Brown"),
+        ("olivia.martinez@gauntlet.com", "Olivia Martinez"),
+    ]
     
     print("\n" + "=" * 60)
-    if teacher_success and student_success:
-        print("✅ All demo accounts created successfully!")
-        print("\nDemo Accounts (ready to use!):")
-        print("  Teacher: teacher@gauntlet.com")
-        print("           Password: demo123456")
-        print("  Student: sally-sixth-grader@gauntlet.com")
-        print("           Password: demo123456")
-        print("\nNote: These demo accounts can sign in directly with password")
-        print("      on the login page. Just enter the email and password!")
-        return 0
-    else:
-        print("⚠️  Some accounts may not have been created.")
-        print("    Check the output above for details.")
+    print("Creating Demo Students")
+    print("=" * 60)
+    
+    student_ids = []
+    for email, name in student_data:
+        student_id = create_demo_student(email, name)
+        if student_id:
+            student_ids.append(student_id)
+    
+    if not student_ids:
+        print("\n⚠️  No students were created. Cannot create classes.")
         return 1
+    
+    # Create classes
+    print("\n" + "=" * 60)
+    print("Creating Demo Classes")
+    print("=" * 60)
+    
+    class_names = ["6th Grade English", "7th Grade English"]
+    class_ids = []
+    
+    for class_name in class_names:
+        class_id = create_demo_class(teacher_id, class_name)
+        if class_id:
+            class_ids.append(class_id)
+    
+    if not class_ids:
+        print("\n⚠️  No classes were created.")
+        return 1
+    
+    # Assign students to classes (distribute evenly)
+    print("\n" + "=" * 60)
+    print("Assigning Students to Classes")
+    print("=" * 60)
+    
+    students_per_class = len(student_ids) // len(class_ids)
+    remainder = len(student_ids) % len(class_ids)
+    
+    student_index = 0
+    for i, class_id in enumerate(class_ids):
+        # Distribute students evenly, with remainder going to first classes
+        num_students = students_per_class + (1 if i < remainder else 0)
+        
+        print(f"\nAssigning {num_students} students to {class_names[i]}:")
+        for j in range(num_students):
+            if student_index < len(student_ids):
+                student_id = student_ids[student_index]
+                # Get student name for display
+                student_email = student_data[student_index][0]
+                student_name = student_data[student_index][1]
+                print(f"  - {student_name} ({student_email})")
+                assign_student_to_class(class_id, student_id)
+                student_index += 1
+    
+    print("\n" + "=" * 60)
+    print("✅ Demo Setup Complete!")
+    print("=" * 60)
+    print("\nDemo Accounts (ready to use!):")
+    print("  Teacher: teacher@gauntlet.com")
+    print("           Password: demo123456")
+    print(f"\n  Created {len(class_ids)} classes:")
+    for i, class_name in enumerate(class_names):
+        print(f"    - {class_name}")
+    print(f"\n  Created {len(student_ids)} students:")
+    for email, name in student_data[:len(student_ids)]:
+        print(f"    - {name} ({email})")
+    print("\nNote: These demo accounts can sign in directly with password")
+    print("      on the login page. Just enter the email and password!")
+    return 0
 
 if __name__ == '__main__':
     exit_code = main()

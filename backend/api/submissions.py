@@ -10,6 +10,7 @@ from db import submissions as db_submissions
 from db.supabase_client import get_supabase_client
 from nlp import profiler, recommender
 from nlp.transcript_parser import TranscriptParser
+from utils.file_parser import extract_text_from_file
 
 logger = logging.getLogger(__name__)
 
@@ -145,10 +146,10 @@ async def create_submission(request: CreateSubmissionRequest):
     """Create a new submission and analyze it"""
     try:
         # Validate input
-        if not request.content or len(request.content.strip()) < 10:
+        if not request.content or len(request.content.strip()) < 25:
             raise HTTPException(
                 status_code=400,
-                detail="Story must be at least 10 words long. Please write more!"
+                detail="Content must be at least 25 words long. Please provide more text!"
             )
         
         if not request.student_id:
@@ -178,19 +179,19 @@ async def create_submission(request: CreateSubmissionRequest):
             parsed_result = parser.parse(request.content)
             content_to_analyze = parser.extract_student_text(parsed_result, request.student_speaker_name)
             
-            if not content_to_analyze or len(content_to_analyze.strip()) < 10:
+            if not content_to_analyze or len(content_to_analyze.strip()) < 25:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Selected speaker '{request.student_speaker_name}' has insufficient text (minimum 10 words required)"
+                    detail=f"Selected speaker '{request.student_speaker_name}' has insufficient text (minimum 25 words required)"
                 )
         
         # Count words
         word_count = len(content_to_analyze.split())
         
-        if word_count < 10:
+        if word_count < 25:
             raise HTTPException(
                 status_code=400,
-                detail=f"Story must be at least 10 words. You have {word_count} words."
+                detail=f"Content must be at least 25 words. You have {word_count} words."
             )
         
         # Create submission (store original content, but analyze extracted text)
@@ -230,6 +231,14 @@ async def create_submission(request: CreateSubmissionRequest):
         # Each recommendation now includes: word, definition, example, difficulty_score, 
         # relic_type, rationale (why it was recommended), personalization_score
         recommended_words = recommendations
+        
+        # Store recommendations in database
+        from db import recommendations as db_recommendations
+        await db_recommendations.create_recommendations_batch(
+            student_id=request.student_id,
+            profile_id=profile_id,
+            recommendations=recommendations
+        )
         
         # Update student vocabulary level
         from db import student_progress as db_progress
@@ -280,10 +289,18 @@ async def get_student_submissions(student_id: str, limit: int = 50):
 async def detect_speakers(request: DetectSpeakersRequest):
     """Detect speakers in a transcript and return their information"""
     try:
-        if not request.transcript or len(request.transcript.strip()) < 10:
+        if not request.transcript or not request.transcript.strip():
             raise HTTPException(
                 status_code=400,
-                detail="Transcript must be at least 10 characters long"
+                detail="Transcript cannot be empty"
+            )
+        
+        # Check word count
+        word_count = len(request.transcript.strip().split())
+        if word_count < 25:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Transcript must be at least 25 words long. You have {word_count} words."
             )
         
         # Parse transcript
@@ -311,6 +328,56 @@ async def detect_speakers(request: DetectSpeakersRequest):
         logger.error(f"Error detecting speakers: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/extract-text")
+async def extract_text_from_uploaded_file(
+    file: UploadFile = File(...)
+):
+    """Extract text from an uploaded file without creating a submission"""
+    try:
+        # Validate file type
+        filename = file.filename or ""
+        allowed_extensions = ['.txt', '.md', '.pdf', '.docx']
+        if not any(filename.lower().endswith(ext) for ext in allowed_extensions):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type. Supported types: {', '.join(allowed_extensions)}"
+            )
+        
+        # Read file content
+        content = await file.read()
+        
+        # Extract text using file parser
+        try:
+            text_content = extract_text_from_file(content, filename)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.error(f"Error extracting text from file: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to extract text from file: {str(e)}"
+            )
+        
+        if not text_content or not text_content.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="File appears to be empty or contains no extractable text"
+            )
+        
+        word_count = len(text_content.split())
+        
+        return {
+            "text": text_content,
+            "filename": filename,
+            "word_count": word_count,
+            "char_count": len(text_content)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/upload")
 async def upload_file_for_student(
     student_id: str,
@@ -318,17 +385,45 @@ async def upload_file_for_student(
 ):
     """Upload a file (essay/document) for a student"""
     try:
+        # Validate file type
+        filename = file.filename or ""
+        allowed_extensions = ['.txt', '.md', '.pdf', '.docx']
+        if not any(filename.lower().endswith(ext) for ext in allowed_extensions):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type. Supported types: {', '.join(allowed_extensions)}"
+            )
+        
         # Read file content
         content = await file.read()
-        text_content = content.decode('utf-8')
+        
+        # Extract text using file parser
+        try:
+            text_content = extract_text_from_file(content, filename)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            logger.error(f"Error extracting text from file: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to extract text from file: {str(e)}"
+            )
+        
+        if not text_content or len(text_content.strip()) < 25:
+            word_count = len(text_content.split()) if text_content else 0
+            raise HTTPException(
+                status_code=400,
+                detail=f"File content must be at least 25 words. You have {word_count} words."
+            )
         
         # Create submission
+        word_count = len(text_content.split())
         submission_id = await db_submissions.create_submission(
             student_id=student_id,
             submission_type="upload",
             content=text_content,
             source="file",
-            word_count=len(text_content.split())
+            word_count=word_count
         )
         
         # Analyze (same as create_submission)
@@ -355,12 +450,22 @@ async def upload_file_for_student(
         # Return full recommendation objects (not just words)
         recommended_words = recommendations
         
+        # Store recommendations in database
+        from db import recommendations as db_recommendations
+        await db_recommendations.create_recommendations_batch(
+            student_id=student_id,
+            profile_id=profile_id,
+            recommendations=recommendations
+        )
+        
         return {
             "submission_id": submission_id,
             "profile_id": profile_id,
             "recommended_words": recommended_words,
             "vocabulary_level": analysis['vocabulary_level']
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error uploading file: {e}")
         raise HTTPException(status_code=500, detail=str(e))

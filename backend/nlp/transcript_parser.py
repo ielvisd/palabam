@@ -138,49 +138,89 @@ class TranscriptParser:
         return None
     
     def _try_parse_labeled(self, transcript: str) -> Optional[Dict[str, Any]]:
-        """Try to parse as labeled format (e.g., "Speaker: text")"""
-        lines = transcript.strip().split('\n')
+        """Try to parse as labeled format (e.g., "Speaker: text")
         
-        if len(lines) < 2:
-            # Need at least 2 lines to be a multi-speaker transcript
+        Handles both multi-line and single-line formats where speakers may appear
+        on the same line without newlines between them.
+        """
+        transcript = transcript.strip()
+        if not transcript:
             return None
         
-        speakers = []
-        current_speaker = None
-        current_text = []
-        speaker_texts = defaultdict(list)
+        # Patterns that can match anywhere in text (not just line start)
+        # These patterns find speaker labels and capture text until the next speaker or end
+        flexible_patterns = [
+            (r'(\w+):\s*', re.IGNORECASE),  # "Speaker: " - most common format
+            (r'\[(\w+)\]:\s*', re.IGNORECASE),  # "[Speaker]: "
+            (r'<(\w+)>\s*', re.IGNORECASE),  # "<Speaker> "
+            (r'(\w+)\s*-\s*', re.IGNORECASE),  # "Speaker - "
+        ]
         
-        # Try to match speaker patterns
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
+        speaker_texts = defaultdict(list)
+        found_pattern = None
+        
+        # Try each pattern to find speaker labels in the entire text
+        for pattern, flags in flexible_patterns:
+            # Find all matches of this pattern
+            matches = list(re.finditer(pattern, transcript, flags))
+            if len(matches) >= 1:  # Found at least one speaker label
+                found_pattern = (pattern, flags)
+                break
+        
+        if found_pattern:
+            # Found a pattern with multiple matches - extract speakers
+            pattern, flags = found_pattern
+            matches = list(re.finditer(pattern, transcript, flags))
             
-            matched = False
-            for pattern in self.SPEAKER_PATTERNS:
-                match = re.match(pattern, line, re.IGNORECASE)
-                if match:
-                    speaker_name = match.group(1).strip()
-                    text = match.group(2).strip()
-                    
-                    if text:  # Only add if there's actual text
-                        speaker_texts[speaker_name].append(text)
-                    matched = True
-                    break
+            # Extract text segments between speaker labels
+            for i, match in enumerate(matches):
+                speaker_name = match.group(1).strip()
+                start_pos = match.end()  # Position after the speaker label
+                
+                # Find the end position (start of next speaker or end of text)
+                if i + 1 < len(matches):
+                    end_pos = matches[i + 1].start()
+                else:
+                    end_pos = len(transcript)
+                
+                # Extract the text for this speaker
+                text = transcript[start_pos:end_pos].strip()
+                
+                if text:
+                    speaker_texts[speaker_name].append(text)
+        else:
+            # Fall back to line-by-line approach (backward compatibility)
+            lines = transcript.split('\n')
+            if len(lines) < 2:
+                return None
             
-            # If no pattern matched, check if previous line had a speaker
-            # and this might be continuation
-            if not matched and current_speaker:
-                # Continuation of previous speaker's text
-                speaker_texts[current_speaker].append(line)
-            elif not matched:
-                # Could be plain text without labels - check if it looks like labeled format
-                # by checking if most lines have labels
-                pass
+            current_speaker = None
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                matched = False
+                for pattern in self.SPEAKER_PATTERNS:
+                    match = re.match(pattern, line, re.IGNORECASE)
+                    if match:
+                        speaker_name = match.group(1).strip()
+                        text = match.group(2).strip()
+                        
+                        if text:
+                            speaker_texts[speaker_name].append(text)
+                        current_speaker = speaker_name
+                        matched = True
+                        break
+                
+                # If no pattern matched, check if previous line had a speaker
+                if not matched and current_speaker:
+                    speaker_texts[current_speaker].append(line)
         
         # Check if we found multiple speakers or consistent labeling
         if len(speaker_texts) >= 2:
             # Multiple speakers detected
+            speakers = []
             for speaker_name, texts in speaker_texts.items():
                 combined_text = ' '.join(texts)
                 speakers.append({
@@ -199,11 +239,11 @@ class TranscriptParser:
             # Single speaker with labels - still consider it labeled format
             speaker_name, texts = list(speaker_texts.items())[0]
             combined_text = ' '.join(texts)
-            speakers.append({
+            speakers = [{
                 'name': speaker_name,
                 'text': combined_text,
                 'word_count': len(combined_text.split())
-            })
+            }]
             
             return {
                 'format_detected': 'labeled',
