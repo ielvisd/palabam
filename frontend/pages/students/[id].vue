@@ -191,49 +191,12 @@
           </div>
         </template>
 
-        <div class="space-y-4">
-          <div
-            v-for="(profile, index) in student.profiles"
-            :key="profile.id"
-            class="flex gap-4 pb-4 border-b last:border-0"
-          >
-            <div class="flex-shrink-0">
-              <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <UIcon name="i-heroicons-document-check" class="text-primary text-xl" />
-              </div>
-            </div>
-            <div class="flex-1">
-              <div class="flex items-center justify-between mb-2">
-                <h3 class="font-semibold text-lg">{{ formatDate(profile.created_at) }}</h3>
-                <UBadge
-                  v-if="profile.resonance_data?.vocabulary_level"
-                  :color="getLevelColor(profile.resonance_data.vocabulary_level)"
-                  variant="soft"
-                >
-                  {{ profile.resonance_data.vocabulary_level }}
-                </UBadge>
-              </div>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <p class="text-gray-600">Unique Words</p>
-                  <p class="font-semibold">{{ profile.resonance_data?.unique_words || 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-gray-600">Total Words</p>
-                  <p class="font-semibold">{{ profile.resonance_data?.total_words || 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-gray-600">Complexity</p>
-                  <p class="font-semibold">{{ Math.round((profile.resonance_data?.complexity_score || 0) * 100) }}%</p>
-                </div>
-                <div>
-                  <p class="text-gray-600">Lexical Diversity</p>
-                  <p class="font-semibold">{{ Math.round((profile.resonance_data?.lexical_diversity || 0) * 100) }}%</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ProfileHistory
+          :profiles="student.profiles || []"
+          :student-id="studentId"
+          :loading="loading"
+          :show-actions="false"
+        />
       </UCard>
     </div>
 

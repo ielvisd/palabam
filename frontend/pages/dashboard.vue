@@ -271,34 +271,14 @@
 
             <!-- Submission History -->
             <div v-if="student.profiles && student.profiles.length > 0" class="mt-6">
-              <h4 class="font-semibold text-lg text-navy dark:text-white mb-3">Submission History</h4>
-              <div class="space-y-2">
-                  <UCard
-                  v-for="profile in student.profiles.slice(0, 5)"
-                  :key="profile.id"
-                  class="p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <div class="flex items-center justify-between">
-                    <div>
-                      <span class="text-sm font-medium text-gray-900 dark:text-white">
-                        {{ formatDate(profile.created_at) }}
-                      </span>
-                      <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        {{ profile.resonance_data?.unique_words || 0 }} unique words analyzed
-                      </p>
-                    </div>
-                    <UButton
-                      :to="`/students/${student.id}`"
-                      variant="ghost"
-                      color="neutral"
-                      size="xs"
-                      icon="i-heroicons-arrow-right"
-                    >
-                      View
-                    </UButton>
-                  </div>
-                </UCard>
-              </div>
+              <ProfileHistory
+                :profiles="student.profiles"
+                :student-id="student.id"
+                title="Submission History"
+                :limit="5"
+                :show-actions="true"
+                @profile-click="() => navigateTo(`/students/${student.id}`)"
+              />
             </div>
           </div>
         </UCard>

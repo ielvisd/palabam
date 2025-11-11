@@ -32,10 +32,11 @@ def create_auth_user(email: str, password: str, user_metadata: Dict[str, Any]) -
         User data if successful, None otherwise
     """
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_service_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    # Prioritize SUPABASE_ACCESS_TOKEN since user set it explicitly
+    supabase_service_key = os.getenv("SUPABASE_ACCESS_TOKEN") or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     
     if not supabase_url or not supabase_service_key:
-        raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in .env file")
+        raise ValueError("SUPABASE_URL and SUPABASE_KEY (or SUPABASE_ACCESS_TOKEN) must be set in .env file")
     
     # Verify service role key format (should start with eyJ and be long)
     if not supabase_service_key.startswith("eyJ") or len(supabase_service_key) < 100:
@@ -88,7 +89,7 @@ def create_auth_user(email: str, password: str, user_metadata: Dict[str, Any]) -
                     print(f"     Get it from: Supabase Dashboard > Settings > API > service_role key")
                     print(f"     Make sure you're using the SERVICE_ROLE key, not the anon/public key.")
                     return None
-                if "user_already_registered" in str(error_data) or error_data.get("code") == "user_already_registered":
+                if error_data.get("error_code") == "email_exists" or "user_already_registered" in str(error_data) or error_data.get("code") == "user_already_registered":
                     # User already exists, try to get the user
                     print(f"  User already exists, attempting to retrieve...")
                     get_url = f"{supabase_url}/auth/v1/admin/users"
@@ -129,7 +130,13 @@ def create_demo_teacher(email: str = "teacher@gauntlet.com", name: str = "Demo T
     """
     print(f"\nCreating demo teacher account: {email}")
     
-    supabase = get_supabase_client()
+    # Use service role key for admin operations (bypasses RLS)
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_service_key = os.getenv("SUPABASE_ACCESS_TOKEN") or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not supabase_url or not supabase_service_key:
+        raise ValueError("SUPABASE_URL and service role key must be set")
+    
+    supabase = create_client(supabase_url, supabase_service_key)
     
     # Check if user already exists
     existing_user = supabase.table("users").select("id, email").eq("email", email).execute()
@@ -198,7 +205,13 @@ def create_demo_student(email: str = "sally-sixth-grader@gauntlet.com", name: st
     """
     print(f"\nCreating demo student account: {email}")
     
-    supabase = get_supabase_client()
+    # Use service role key for admin operations (bypasses RLS)
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_service_key = os.getenv("SUPABASE_ACCESS_TOKEN") or os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not supabase_url or not supabase_service_key:
+        raise ValueError("SUPABASE_URL and service role key must be set")
+    
+    supabase = create_client(supabase_url, supabase_service_key)
     
     # Check if user already exists
     existing_user = supabase.table("users").select("id, email").eq("email", email).execute()

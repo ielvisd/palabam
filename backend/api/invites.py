@@ -122,9 +122,9 @@ async def generate_invite_link(
             # Return existing invite
             code = existing_invite.data[0]["code"]
             # Use environment variable or default to localhost for development
-        import os
-        base_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
-        invite_link = f"{base_url}/invite/{code}"
+            import os
+            base_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
+            invite_link = f"{base_url}/invite/{code}"
             return {
                 "success": True,
                 "code": code,

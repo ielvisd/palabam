@@ -213,12 +213,157 @@ cd backend && pnpm dev
 - `prd.md` - Product requirements document
 - `tasks.md` - Project task list
 
+## API Documentation
+
+### Profile Creation
+
+**POST** `/api/profile/`
+
+Create a vocabulary profile from a student transcript.
+
+**Request Body**:
+```json
+{
+  "transcript": "Student's written or spoken transcript text...",
+  "student_id": "uuid-of-student",
+  "inputMode": "text" // or "voice"
+}
+```
+
+**Response**:
+```json
+{
+  "profile_id": "uuid",
+  "word_scores": {
+    "word": {
+      "difficulty_score": 45,
+      "relic_type": "echo",
+      "frequency": 1234,
+      "pos": "NOUN"
+    }
+  },
+  "resonance_data": {
+    "vocabulary_level": "4-5",
+    "total_words": 50,
+    "unique_words": 35,
+    "complexity_score": 0.65,
+    "lexical_diversity": 0.70
+  },
+  "vocabulary_level": "4-5",
+  "recommended_words": ["word1", "word2", ...]
+}
+```
+
+### Get Student Recommendations
+
+**GET** `/api/recommend/student/{student_id}`
+
+Get all recommendations for a student from the database.
+
+**Response**:
+```json
+{
+  "recommended_words": [
+    {
+      "id": "uuid",
+      "word": "example",
+      "definition": "A thing characteristic of its kind",
+      "example": "This is an example sentence.",
+      "difficulty_score": 45,
+      "lexile_score": 650,
+      "relic_type": "echo",
+      "status": "pending"
+    }
+  ]
+}
+```
+
+### Get Students by Class
+
+**GET** `/api/students/class/{class_id}`
+
+Get all students enrolled in a specific class.
+
+**Response**:
+```json
+{
+  "students": [
+    {
+      "id": "uuid",
+      "name": "Student Name",
+      "user_id": "uuid"
+    }
+  ]
+}
+```
+
+### Generate Recommendations
+
+**POST** `/api/recommend/`
+
+Generate word recommendations based on a profile.
+
+**Request Body**:
+```json
+{
+  "profile": {
+    "word_scores": {...},
+    "resonance_data": {...}
+  },
+  "count": 7,
+  "zpd_range": [0.70, 0.80]
+}
+```
+
+**Response**:
+```json
+{
+  "recommended_words": [
+    {
+      "word": "example",
+      "definition": "...",
+      "example": "...",
+      "difficulty_score": 45,
+      "relic_type": "echo"
+    }
+  ]
+}
+```
+
+## Testing
+
+### Running Automated Tests
+
+**Backend Tests**:
+```bash
+cd backend
+pytest tests/ -v
+```
+
+**Run specific test files**:
+```bash
+pytest tests/test_profiler.py -v
+pytest tests/test_recommender.py -v
+pytest tests/test_api_profiler.py -v
+```
+
+**Test Coverage**:
+```bash
+pytest tests/ --cov=nlp --cov=api --cov-report=html
+```
+
+### Test Structure
+
+- `backend/tests/test_profiler.py` - Tests for transcript profiling pipeline
+- `backend/tests/test_recommender.py` - Tests for recommendation engine
+- `backend/tests/test_api_profiler.py` - Tests for API endpoints
+
 ## Next Steps
 
-1. **Dataset Integration**: Add COCA/Lexile datasets to `backend/data/`
-2. **Database Integration**: Connect backend to Supabase for data persistence
-3. **Authentication**: Implement Supabase Auth flows
-4. **Testing**: Add unit and integration tests
+1. ✅ **Dataset Integration**: COCA/Lexile datasets added to `backend/data/`
+2. ✅ **Database Integration**: Connected to Supabase with RLS policies
+3. ✅ **Authentication**: Supabase Auth with magic links implemented
+4. ✅ **Testing**: Automated tests added for profiling and recommendations
 5. **Deployment**: Set up Vercel (frontend) and AWS Lambda (backend)
 
 ## License
