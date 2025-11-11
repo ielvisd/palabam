@@ -10,120 +10,9 @@
         </p>
       </template>
 
-      <div class="space-y-6">
-        <!-- Input Section -->
-        <div>
-          <label class="block text-sm font-medium mb-2">
-            {{ isVoiceMode ? 'Voice Input' : 'Text Input' }}
-          </label>
-          
-          <!-- Voice Mode -->
-          <div v-if="isVoiceMode" class="space-y-4">
-            <div class="flex items-center gap-4">
-              <UButton
-                :color="isRecording ? 'red' : 'primary'"
-                :disabled="isProcessing"
-                @click="handleVoiceInput"
-                size="xl"
-                class="flex-1"
-              >
-                <template v-if="isRecording">
-                  <UIcon name="i-heroicons-stop-circle" class="mr-2" />
-                  Stop Recording
-                </template>
-                <template v-else>
-                  <UIcon name="i-heroicons-microphone" class="mr-2" />
-                  Start Recording
-                </template>
-              </UButton>
-            </div>
-            
-            <div v-if="isRecording" class="text-center">
-              <div class="inline-flex items-center gap-2 text-red-600">
-                <span class="animate-pulse">●</span>
-                <span>Recording...</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Text Mode -->
-          <div v-else>
-            <UTextarea
-              v-model="textInput"
-              placeholder="Type your story here..."
-              :rows="8"
-              size="xl"
-              :disabled="isProcessing"
-            />
-          </div>
-
-          <!-- Transcript Display -->
-          <div v-if="transcript" class="mt-4 p-4 bg-gray-50 rounded-lg">
-            <p class="text-sm text-gray-600 mb-1">Your input:</p>
-            <p class="text-base">{{ transcript }}</p>
-          </div>
-
-          <!-- Error Display -->
-          <UAlert
-            v-if="error"
-            color="red"
-            variant="soft"
-            :title="error"
-            class="mt-4"
-            @close="error = null"
-          />
-        </div>
-
-        <!-- Submit Button -->
-        <UButton
-          :disabled="!canSubmit || isProcessing"
-          :loading="isProcessing"
-          size="xl"
-          color="primary"
-          block
-          @click="submitStory"
-        >
-          {{ isProcessing ? 'Analyzing...' : 'Create My Profile' }}
-        </UButton>
-
-        <!-- Processing Status -->
-        <div v-if="isProcessing" class="text-center">
-          <UProgress :value="processingProgress" class="mb-2" />
-          <p class="text-sm text-gray-600">{{ processingStatus }}</p>
-        </div>
-
-        <!-- Results -->
-        <div v-if="profileResult" class="mt-6">
-          <UCard>
-            <template #header>
-              <h2 class="text-2xl font-bold">Your Relic Resonance Profile</h2>
-            </template>
-            <div class="space-y-4">
-              <div>
-                <h3 class="font-semibold mb-2">Recommended Words:</h3>
-                <div class="flex flex-wrap gap-2">
-                  <UBadge
-                    v-for="word in profileResult.recommendedWords"
-                    :key="word"
-                    color="primary"
-                    variant="soft"
-                    size="lg"
-                  >
-                    {{ word }}
-                  </UBadge>
-                </div>
-              </div>
-              <UButton
-                to="/dashboard"
-                color="primary"
-                size="xl"
-                block
-              >
-                View Dashboard
-              </UButton>
-            </div>
-          </UCard>
-        </div>
+      <div class="text-center py-8">
+        <UIcon name="i-heroicons-arrow-path" class="text-4xl text-gray-400 animate-spin mx-auto mb-4" />
+        <p class="text-gray-600">Please wait while we redirect you...</p>
       </div>
     </UCard>
   </UContainer>
@@ -139,9 +28,24 @@ useHead({
   title: 'Story Spark - Palabam'
 })
 
-// Redirect immediately
-onMounted(() => {
-  navigateTo('/story-spark')
+// Redirect based on user role
+onMounted(async () => {
+  const { getUserRole } = useAuth()
+  const role = await getUserRole()
+  
+  // Both students and teachers can access Story Spark
+  if (role === 'student' || role === 'teacher') {
+    navigateTo('/story-spark')
+  } else {
+    // For other roles, redirect to their dashboard
+    switch (role) {
+      case 'parent':
+        navigateTo('/parent/dashboard')
+        break
+      default:
+        navigateTo('/')
+    }
+  }
 })
 </script>
 

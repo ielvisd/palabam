@@ -39,12 +39,7 @@
               />
             </UFormField>
 
-            <UFormField 
-              v-if="isDemoAccount" 
-              label="Password" 
-              name="password" 
-              required
-            >
+            <UFormField label="Password" name="password" required>
               <UInput
                 v-model="form.password"
                 type="password"
@@ -60,9 +55,9 @@
               block
               size="lg"
               :loading="loading"
-              :disabled="!form.email || (isDemoAccount && !form.password)"
+              :disabled="!form.email || !form.password"
             >
-              {{ isDemoAccount ? 'Sign In' : 'Send Magic Link' }}
+              Sign In
             </UButton>
           </UForm>
 
@@ -81,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-const { signInWithMagicLink, signInWithPassword, user, getUserRole } = useAuth()
+const { signInWithPassword, user, getUserRole } = useAuth()
 const router = useRouter()
 
 // Redirect if already authenticated
@@ -107,19 +102,9 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 
-// Check if this is a demo account (ends with @gauntlet.com)
-const isDemoAccount = computed(() => {
-  return form.email.toLowerCase().endsWith('@gauntlet.com')
-})
-
 const handleLogin = async () => {
-  if (!form.email) {
-    error.value = 'Please enter your email'
-    return
-  }
-
-  if (isDemoAccount.value && !form.password) {
-    error.value = 'Please enter your password'
+  if (!form.email || !form.password) {
+    error.value = 'Please enter your email and password'
     return
   }
 
@@ -128,27 +113,34 @@ const handleLogin = async () => {
   successMessage.value = null
 
   try {
-    if (isDemoAccount.value) {
-      // Demo accounts use password login
-      await signInWithPassword(form.email, form.password)
-      // Redirect after successful login
-      const role = await getUserRole()
-      if (role === 'parent') {
-        router.push('/parent/dashboard')
-      } else if (role === 'student') {
-        router.push('/student/dashboard')
-      } else if (role === 'teacher') {
-        router.push('/dashboard')
-      }
+    await signInWithPassword(form.email, form.password)
+    
+    // Wait for session to be established
+    await nextTick()
+    
+    // Wait a bit for the reactive user to update
+    let attempts = 0
+    let role: 'student' | 'teacher' | 'admin' | 'parent' | null = null
+    while (attempts < 10 && !role) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      role = await getUserRole()
+      attempts++
+    }
+    
+    // Redirect based on role
+    if (role === 'parent') {
+      router.push('/parent/dashboard')
+    } else if (role === 'student') {
+      router.push('/student/dashboard')
+    } else if (role === 'teacher') {
+      router.push('/dashboard')
     } else {
-      // Regular accounts use magic link
-      await signInWithMagicLink(form.email)
-      successMessage.value = 'Check your email for the magic link! Click the link to sign in.'
+      // If no role yet, redirect to home
+      router.push('/')
     }
   } catch (err: any) {
-    error.value = err.message || (isDemoAccount.value 
-      ? 'Failed to sign in. Please check your email and password.' 
-      : 'Failed to send magic link. Please try again.')
+    error.value = err.message || 'Failed to sign in. Please check your email and password.'
+    console.error('Login error:', err)
   } finally {
     loading.value = false
   }

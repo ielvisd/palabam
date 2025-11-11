@@ -139,16 +139,6 @@
                 <UIcon name="i-heroicons-squares-2x2" class="mr-2" />
                 View Dashboard
               </UButton>
-              <UButton
-                to="/teacher/invites"
-                size="xl"
-                variant="outline"
-                color="neutral"
-                class="w-full sm:w-auto"
-              >
-                <UIcon name="i-heroicons-envelope" class="mr-2" />
-                Send Invites
-              </UButton>
             </div>
           </template>
         </div>

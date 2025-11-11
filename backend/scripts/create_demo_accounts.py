@@ -143,6 +143,29 @@ def create_demo_teacher(email: str = "teacher@gauntlet.com", name: str = "Demo T
     if existing_user.data:
         print(f"  ⚠️  User {email} already exists (ID: {existing_user.data[0]['id']})")
         user_id = existing_user.data[0]['id']
+        
+        # Update password for existing user
+        print("  Updating password for existing user...")
+        base_url = supabase_url.rstrip('/')
+        update_url = f"{base_url}/auth/v1/admin/users/{user_id}"
+        headers = {
+            "apikey": supabase_service_key,
+            "Authorization": f"Bearer {supabase_service_key}",
+            "Content-Type": "application/json"
+        }
+        try:
+            update_response = requests.put(
+                update_url,
+                json={"password": password},
+                headers=headers,
+                timeout=30
+            )
+            if update_response.status_code in [200, 201]:
+                print(f"  ✓ Password updated for existing user")
+            else:
+                print(f"  ⚠️  Could not update password: {update_response.status_code} - {update_response.text}")
+        except Exception as e:
+            print(f"  ⚠️  Could not update password: {e}")
     else:
         # Create auth user
         print("  Creating auth user...")
@@ -218,6 +241,29 @@ def create_demo_student(email: str = "sally-sixth-grader@gauntlet.com", name: st
     if existing_user.data:
         print(f"  ⚠️  User {email} already exists (ID: {existing_user.data[0]['id']})")
         user_id = existing_user.data[0]['id']
+        
+        # Update password for existing user
+        print("  Updating password for existing user...")
+        base_url = supabase_url.rstrip('/')
+        update_url = f"{base_url}/auth/v1/admin/users/{user_id}"
+        headers = {
+            "apikey": supabase_service_key,
+            "Authorization": f"Bearer {supabase_service_key}",
+            "Content-Type": "application/json"
+        }
+        try:
+            update_response = requests.put(
+                update_url,
+                json={"password": password},
+                headers=headers,
+                timeout=30
+            )
+            if update_response.status_code in [200, 201]:
+                print(f"  ✓ Password updated for existing user")
+            else:
+                print(f"  ⚠️  Could not update password: {update_response.status_code} - {update_response.text}")
+        except Exception as e:
+            print(f"  ⚠️  Could not update password: {e}")
     else:
         # Create auth user
         print("  Creating auth user...")

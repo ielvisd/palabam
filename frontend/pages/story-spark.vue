@@ -27,6 +27,30 @@
         </div>
       </template>
 
+      <!-- Student Selector (Teachers Only) -->
+      <div v-if="userRole === 'teacher'" class="mb-6">
+        <UCard>
+          <template #header>
+            <h3 class="text-lg font-semibold">Select Student</h3>
+          </template>
+          <div class="space-y-4">
+            <USelectMenu
+              v-model="selectedStudentId"
+              :items="availableStudents"
+              value-key="id"
+              label-key="name"
+              :search-input="{ placeholder: 'Search students by name...' }"
+              placeholder="Select a student to assess"
+              :loading="loadingStudents"
+              size="lg"
+            />
+            <p class="text-xs text-gray-600">
+              Select a student from your classes to assess their vocabulary on the spot.
+            </p>
+          </div>
+        </UCard>
+      </div>
+
       <!-- Prompt Display -->
       <div class="mb-6">
         <UCard class="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
@@ -277,8 +301,15 @@
 
 <script setup lang="ts">
 definePageMeta({
-  middleware: 'student'
+  middleware: 'auth'
 })
+
+const { getUserRole, getTeacherId, getStudentId } = useAuth()
+const userRole = ref<string | null>(null)
+const teacherId = ref<string | null>(null)
+const selectedStudentId = ref<string | null>(null)
+const availableStudents = ref<Array<{ id: string; name: string }>>([])
+const loadingStudents = ref(false)
 
 const {
   isVoiceMode,
@@ -338,13 +369,71 @@ const prompts = [
 // This prevents hydration mismatches
 const currentPrompt = ref(prompts[0])
 
-// Randomize prompt after hydration completes
-// Using requestAnimationFrame ensures this runs after Vue has finished hydrating
-onMounted(() => {
+// Fetch user role and initialize
+onMounted(async () => {
+  // Get user role
+  const role = await getUserRole()
+  userRole.value = role
+  
+  // If teacher, fetch students and teacher ID
+  if (role === 'teacher') {
+    const id = await getTeacherId()
+    teacherId.value = id
+    if (id) {
+      await fetchTeacherStudents()
+    }
+  }
+  
+  // Randomize prompt after hydration completes
   requestAnimationFrame(() => {
     currentPrompt.value = prompts[Math.floor(Math.random() * prompts.length)]
   })
 })
+
+// Fetch all students from teacher's classes
+const fetchTeacherStudents = async () => {
+  if (!teacherId.value) return
+  
+  loadingStudents.value = true
+  try {
+    const config = useRuntimeConfig()
+    const apiUrl = config.public.apiUrl || 'http://localhost:8000'
+    
+    // Get all classes for the teacher
+    const classesResponse = await $fetch(`${apiUrl}/api/classes/teacher/${teacherId.value}`) as any
+    const classes = classesResponse.classes || []
+    
+    // Get all students from all classes
+    const studentMap = new Map<string, { id: string; name: string }>()
+    
+    for (const classItem of classes) {
+      try {
+        const studentsResponse = await $fetch(`${apiUrl}/api/students/class/${classItem.id}`) as any
+        const students = studentsResponse.students || []
+        
+        for (const student of students) {
+          if (!studentMap.has(student.id)) {
+            studentMap.set(student.id, {
+              id: student.id,
+              name: student.name
+            })
+          }
+        }
+      } catch (err) {
+        console.error(`Error fetching students for class ${classItem.id}:`, err)
+      }
+    }
+    
+    availableStudents.value = Array.from(studentMap.values()).sort((a, b) => 
+      a.name.localeCompare(b.name)
+    )
+  } catch (err) {
+    console.error('Error fetching teacher students:', err)
+    error.value = 'Failed to load students. Please refresh the page.'
+  } finally {
+    loadingStudents.value = false
+  }
+}
 
 const wordCount = computed(() => {
   if (isVoiceMode.value) {
@@ -355,11 +444,18 @@ const wordCount = computed(() => {
 })
 
 const canSubmit = computed(() => {
+  // For teachers, require student selection
+  if (userRole.value === 'teacher' && !selectedStudentId.value) {
+    return false
+  }
+  
+  // Check input content
   if (isVoiceMode.value) {
     return transcript.value.trim().length > 0 && wordCount.value >= 10
   }
   return textInput.value.trim().length > 0 && wordCount.value >= 10
 })
+
 
 const handleVoiceInput = () => {
   if (isRecording.value) {
@@ -379,15 +475,29 @@ const submitStory = async () => {
   try {
     const inputText = isVoiceMode.value ? transcript.value : textInput.value
 
-    // Get student ID from auth (authentication required)
-    const { getStudentId } = useAuth()
-    const studentId = await getStudentId()
+    // Get student ID based on user role
+    let studentId: string | null = null
     
-    if (!studentId) {
-      error.value = 'You must be signed in to submit a story. Please sign in first.'
-      processingProgress.value = 0
-      processingStatus.value = ''
-      return
+    if (userRole.value === 'teacher') {
+      // For teachers, use selected student ID
+      studentId = selectedStudentId.value
+      if (!studentId) {
+        error.value = 'Please select a student to assess.'
+        processingProgress.value = 0
+        processingStatus.value = ''
+        isProcessing.value = false
+        return
+      }
+    } else {
+      // For students, use their own ID from auth
+      studentId = await getStudentId()
+      if (!studentId) {
+        error.value = 'You must be signed in to submit a story. Please sign in first.'
+        processingProgress.value = 0
+        processingStatus.value = ''
+        isProcessing.value = false
+        return
+      }
     }
 
     processingProgress.value = 30

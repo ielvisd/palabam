@@ -6,7 +6,10 @@
     "dev": "nuxt dev",
     "build": "nuxt build",
     "generate": "nuxt generate",
-    "preview": "nuxt preview"
+    "preview": "nuxt preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "@nuxt/ui": "^4.1.0",
@@ -24,6 +27,8 @@
   },
   "devDependencies": {
     "@nuxt/devtools": "latest",
-    "typescript": "^5.9.3"
+    "@vitest/ui": "^2.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^2.0.0"
   }
 }

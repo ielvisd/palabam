@@ -40,7 +40,24 @@
               class="mb-4"
             />
 
-            <UForm :state="form" class="space-y-4" @submit="handleSignup">
+            <!-- Existing logged-in student -->
+            <div v-if="isLoggedIn && userRole === 'student'">
+              <p class="text-gray-600 dark:text-gray-300 mb-4">
+                You're already signed in. Click the button below to join this class.
+              </p>
+              <UButton
+                @click="handleJoinClass"
+                block
+                size="lg"
+                :loading="loading"
+                color="primary"
+              >
+                Join Class
+              </UButton>
+            </div>
+
+            <!-- New student signup form -->
+            <UForm v-else :state="form" class="space-y-4" @submit="handleSignup">
               <UFormField label="Name" name="name" required>
                 <UInput
                   v-model="form.name"
@@ -61,12 +78,23 @@
                 />
               </UFormField>
 
+              <UFormField label="Password" name="password" required>
+                <UInput
+                  v-model="form.password"
+                  type="password"
+                  placeholder="Create a password (min 8 characters)"
+                  icon="i-heroicons-lock-closed"
+                  :disabled="loading"
+                  autocomplete="new-password"
+                />
+              </UFormField>
+
               <UButton
                 type="submit"
                 block
                 size="lg"
                 :loading="loading"
-                :disabled="!form.email || !form.name"
+                :disabled="!form.email || !form.name || !form.password || form.password.length < 8"
               >
                 Create Account
               </UButton>
@@ -89,7 +117,7 @@
             </UButton>
           </div>
 
-          <div class="mt-6 text-center">
+          <div v-if="!isLoggedIn" class="mt-6 text-center">
             <p class="text-sm text-gray-600 dark:text-gray-400">
               Already have an account?
               <NuxtLink to="/login" class="text-primary hover:underline font-medium">
@@ -105,13 +133,14 @@
 
 <script setup lang="ts">
 const route = useRoute()
-const { signUpStudentViaInvite, validateInviteCode } = useAuth()
+const { signUpStudentViaInvite, validateInviteCode, acceptInviteForExistingStudent, user, getUserRole } = useAuth()
 
 const inviteCode = route.params.code as string
 
 const form = reactive({
   name: '',
-  email: ''
+  email: '',
+  password: ''
 })
 
 const loading = ref(false)
@@ -119,9 +148,15 @@ const loadingInvite = ref(true)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 const inviteData = ref<any>(null)
+const userRole = ref<string | null>(null)
+const isLoggedIn = computed(() => !!user.value)
 
-// Validate invite code on mount
+// Check user role on mount
 onMounted(async () => {
+  if (user.value) {
+    userRole.value = await getUserRole()
+  }
+  
   try {
     const data = await validateInviteCode(inviteCode)
     inviteData.value = data
@@ -134,8 +169,13 @@ onMounted(async () => {
 })
 
 const handleSignup = async () => {
-  if (!form.email || !form.name) {
-    error.value = 'Please fill in your name and email'
+  if (!form.email || !form.name || !form.password) {
+    error.value = 'Please fill in all fields'
+    return
+  }
+
+  if (form.password.length < 8) {
+    error.value = 'Password must be at least 8 characters'
     return
   }
 
@@ -144,10 +184,40 @@ const handleSignup = async () => {
   successMessage.value = null
 
   try {
-    await signUpStudentViaInvite(inviteCode, form.email, form.name)
-    successMessage.value = 'Check your email for the magic link! Click the link to complete your signup and join the class.'
+    await signUpStudentViaInvite(inviteCode, form.email, form.password, form.name)
+    successMessage.value = 'Account created successfully! Redirecting...'
+    
+    // Redirect to student dashboard after a short delay
+    setTimeout(() => {
+      window.location.href = '/student/dashboard'
+    }, 1500)
   } catch (err: any) {
     error.value = err.message || 'Failed to create account. Please try again.'
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleJoinClass = async () => {
+  if (!user.value || !user.value.email) {
+    error.value = 'You must be signed in to join a class'
+    return
+  }
+
+  loading.value = true
+  error.value = null
+  successMessage.value = null
+
+  try {
+    await acceptInviteForExistingStudent(inviteCode, user.value.email)
+    successMessage.value = 'Successfully joined class! Redirecting...'
+    
+    // Redirect to student dashboard after a short delay
+    setTimeout(() => {
+      window.location.href = '/student/dashboard'
+    }, 1500)
+  } catch (err: any) {
+    error.value = err.message || 'Failed to join class. Please try again.'
   } finally {
     loading.value = false
   }

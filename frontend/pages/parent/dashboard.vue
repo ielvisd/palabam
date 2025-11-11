@@ -152,7 +152,10 @@
     </UCard>
 
     <!-- Link Student Modal -->
-    <UModal v-model="showLinkStudentModal">
+    <UModal 
+      v-model="showLinkStudentModal"
+      description="Link your child's existing student account to your parent account by entering their email address."
+    >
       <UCard>
         <template #header>
           <h3 class="text-xl font-semibold dark:text-white">Link Student Account</h3>

@@ -48,6 +48,17 @@
               />
             </UFormField>
 
+            <UFormField label="Password" name="password" required>
+              <UInput
+                v-model="form.password"
+                type="password"
+                placeholder="Create a password (min 8 characters)"
+                icon="i-heroicons-lock-closed"
+                :disabled="loading"
+                autocomplete="new-password"
+              />
+            </UFormField>
+
             <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
               <h3 class="text-lg font-semibold mb-3 dark:text-white">Link to Existing Student (Optional)</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -93,7 +104,7 @@
               block
               size="lg"
               :loading="loading"
-              :disabled="!form.email || !form.name"
+              :disabled="!form.email || !form.name || !form.password || form.password.length < 8"
             >
               Create Account
             </UButton>
@@ -120,6 +131,7 @@ const router = useRouter()
 const form = reactive({
   name: '',
   email: '',
+  password: '',
   children: [{ email: '' }] as Array<{ email: string }>
 })
 
@@ -136,8 +148,13 @@ const removeChild = (index: number) => {
 }
 
 const handleSignup = async () => {
-  if (!form.email || !form.name) {
-    error.value = 'Please fill in your name and email'
+  if (!form.email || !form.name || !form.password) {
+    error.value = 'Please fill in all required fields'
+    return
+  }
+
+  if (form.password.length < 8) {
+    error.value = 'Password must be at least 8 characters'
     return
   }
 
@@ -146,7 +163,7 @@ const handleSignup = async () => {
   successMessage.value = null
 
   try {
-    // Store form data in session storage for after email verification
+    // Store form data in session storage for linking children
     const signupData = {
       name: form.name,
       email: form.email,
@@ -155,8 +172,13 @@ const handleSignup = async () => {
     }
     sessionStorage.setItem('signup_data', JSON.stringify(signupData))
 
-    await signUpParent(form.email, form.name)
-    successMessage.value = 'Check your email for the magic link! After verifying, you can link your children.'
+    await signUpParent(form.email, form.password, form.name)
+    successMessage.value = 'Account created successfully! Redirecting...'
+    
+    // Redirect to parent dashboard after a short delay
+    setTimeout(() => {
+      window.location.href = '/parent/dashboard'
+    }, 1500)
   } catch (err: any) {
     error.value = err.message || 'Failed to create account. Please try again.'
   } finally {

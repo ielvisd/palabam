@@ -37,12 +37,13 @@ app.include_router(profiler.router, prefix="/api/profile", tags=["profiling"])
 app.include_router(recommender.router, prefix="/api/recommend", tags=["recommendations"])
 
 # Story Spark routers
-from api import classes, submissions, students, test_setup, chatbot, parents, invites
+from api import classes, submissions, students, test_setup, chatbot, parents, invites, users
 app.include_router(classes.router, prefix="/api/classes", tags=["classes"])
 app.include_router(submissions.router, prefix="/api/submissions", tags=["submissions"])
 app.include_router(students.router, prefix="/api/students", tags=["students"])
 app.include_router(parents.router, prefix="/api/parents", tags=["parents"])
 app.include_router(invites.router, prefix="/api/invites", tags=["invites"])
+app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(test_setup.router, prefix="/api/test", tags=["testing"])
 app.include_router(chatbot.router, prefix="/api/chatbot", tags=["chatbot"])
 

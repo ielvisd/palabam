@@ -48,12 +48,23 @@
               />
             </UFormField>
 
+            <UFormField label="Password" name="password" required>
+              <UInput
+                v-model="form.password"
+                type="password"
+                placeholder="Create a password (min 8 characters)"
+                icon="i-heroicons-lock-closed"
+                :disabled="loading"
+                autocomplete="new-password"
+              />
+            </UFormField>
+
             <UButton
               type="submit"
               block
               size="lg"
               :loading="loading"
-              :disabled="!form.email || !form.name"
+              :disabled="!form.email || !form.name || !form.password || form.password.length < 8"
             >
               Create Account
             </UButton>
@@ -79,7 +90,8 @@ const router = useRouter()
 
 const form = reactive({
   name: '',
-  email: ''
+  email: '',
+  password: ''
 })
 
 const loading = ref(false)
@@ -87,8 +99,13 @@ const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 
 const handleSignup = async () => {
-  if (!form.email || !form.name) {
-    error.value = 'Please fill in your name and email'
+  if (!form.email || !form.name || !form.password) {
+    error.value = 'Please fill in all required fields'
+    return
+  }
+
+  if (form.password.length < 8) {
+    error.value = 'Password must be at least 8 characters'
     return
   }
 
@@ -97,16 +114,13 @@ const handleSignup = async () => {
   successMessage.value = null
 
   try {
-    // Store form data in session storage for after email verification
-    const signupData = {
-      name: form.name,
-      email: form.email,
-      role: 'teacher'
-    }
-    sessionStorage.setItem('signup_data', JSON.stringify(signupData))
-
-    await signUpTeacher(form.email, form.name)
-    successMessage.value = 'Check your email for the magic link! Click the link to complete your signup.'
+    await signUpTeacher(form.email, form.password, form.name)
+    successMessage.value = 'Account created successfully! Redirecting...'
+    
+    // Redirect to teacher dashboard after a short delay
+    setTimeout(() => {
+      window.location.href = '/dashboard'
+    }, 1500)
   } catch (err: any) {
     error.value = err.message || 'Failed to create account. Please try again.'
   } finally {

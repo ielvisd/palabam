@@ -41,13 +41,6 @@
                 >
                   Story Spark
                 </UButton>
-                <UButton
-                  to="/join-class"
-                  variant="ghost"
-                  :class="{ 'bg-primary/10 text-primary': $route.path === '/join-class' }"
-                >
-                  Join Class
-                </UButton>
               </template>
               <!-- Teacher Navigation -->
               <template v-else-if="userRole === 'teacher'">
@@ -57,13 +50,6 @@
                   :class="{ 'bg-primary/10 text-primary': $route.path === '/dashboard' }"
                 >
                   Dashboard
-                </UButton>
-                <UButton
-                  to="/teacher/invites"
-                  variant="ghost"
-                  :class="{ 'bg-primary/10 text-primary': $route.path === '/teacher/invites' }"
-                >
-                  Send Invites
                 </UButton>
                 <UButton
                   to="/upload"
@@ -170,15 +156,6 @@
                   @click="mobileMenuOpen = false"
                 >
                   Story Spark
-                </UButton>
-                <UButton
-                  to="/join-class"
-                  variant="ghost"
-                  block
-                  :class="{ 'bg-primary/10 text-primary': $route.path === '/join-class' }"
-                  @click="mobileMenuOpen = false"
-                >
-                  Join Class
                 </UButton>
               </template>
               <!-- Teacher Mobile Menu -->
