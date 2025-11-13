@@ -78,18 +78,14 @@ def load_routers():
     except Exception as e:
         logger.error(f"✗ Failed to load API routers: {e}", exc_info=True)
 
-# TEMPORARILY DISABLED: Load routers after app is running
-# This ensures health endpoint is available for testing
-# Routers loading is disabled to isolate health check issue
-logger.info("Router loading DISABLED for testing")
-logger.info("Only health endpoint is available")
-
-# Uncomment to re-enable routers after health check passes:
-# try:
-#     load_routers()
-#     logger.info("Application initialization complete")
-# except Exception as e:
-#     logger.error(f"Error during router loading: {e}", exc_info=True)
+# Load routers after app is created
+# Health endpoint is already registered, so app can start even if routers fail
+try:
+    load_routers()
+    logger.info("Application initialization complete")
+except Exception as e:
+    logger.error(f"Error during router loading (app will still start): {e}", exc_info=True)
+    logger.info("Application starting with health endpoint only")
 
 if __name__ == "__main__":
     import uvicorn
