@@ -2,8 +2,9 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install system dependencies (minimal for faster build)
+# Install system dependencies (needed for spaCy compilation)
 RUN apt-get update && apt-get install -y \
+    build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
