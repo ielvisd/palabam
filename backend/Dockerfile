@@ -3,7 +3,6 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Install system dependencies (needed for spaCy compilation)
-# Updated: 2025-11-13 - Added build-essential for spaCy
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
