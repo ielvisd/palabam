@@ -12,10 +12,21 @@ RUN apt-get update && apt-get install -y \
 # Railway builds from root, so use backend/ prefix
 COPY backend/requirements.txt .
 
-# Install Python dependencies - prefer binary wheels to avoid compilation
-# Upgrade pip first, then install with prefer-binary flag
+# Install Python dependencies in two stages for faster builds
+# Stage 1: Fast packages (no compilation needed)
+# Stage 2: spaCy (may need compilation, but prefer wheels)
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir --prefer-binary -r requirements.txt
+    pip install --no-cache-dir --prefer-binary \
+        fastapi==0.116.0 \
+        uvicorn[standard]==0.34.0 \
+        python-multipart==0.0.20 \
+        pydantic==2.10.3 \
+        supabase==2.9.1 \
+        httpx \
+        python-dotenv==1.0.1 \
+        nltk==3.9.1 \
+        wordfreq==3.0.1 && \
+    pip install --no-cache-dir --prefer-binary spacy==3.7.2
 
 # Download spaCy model and NLTK data in one layer
 RUN python -m spacy download en_core_web_sm && \
