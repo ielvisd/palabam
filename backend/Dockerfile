@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for better Docker layer caching)
-COPY requirements.txt .
+# Railway builds from root, so use backend/ prefix
+COPY backend/requirements.txt .
 
 # Install Python dependencies with no cache and pip upgrade
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -19,8 +20,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 RUN python -m spacy download en_core_web_sm && \
     python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('stopwords', quiet=True)"
 
-# Copy application code
-COPY . .
+# Copy application code (Railway builds from root)
+COPY backend/ .
 
 # Expose port
 EXPOSE 8080
