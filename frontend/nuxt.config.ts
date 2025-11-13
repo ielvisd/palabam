@@ -26,7 +26,8 @@ export default defineNuxtConfig({
     // Private keys (server-side only)
     // Public keys (exposed to client)
     public: {
-      apiUrl: process.env.NUXT_PUBLIC_API_URL || 'http://localhost:8000',
+      // Normalize API URL - remove trailing slash to prevent double slashes
+      apiUrl: (process.env.NUXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, ''),
       supabaseUrl: process.env.NUXT_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.NUXT_PUBLIC_SUPABASE_ANON_KEY
     }
