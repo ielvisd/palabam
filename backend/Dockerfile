@@ -12,9 +12,10 @@ RUN apt-get update && apt-get install -y \
 # Railway builds from root, so use backend/ prefix
 COPY backend/requirements.txt .
 
-# Install Python dependencies with no cache and pip upgrade
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies - prefer binary wheels to avoid compilation
+# Upgrade pip first, then install with prefer-binary flag
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 # Download spaCy model and NLTK data in one layer
 RUN python -m spacy download en_core_web_sm && \

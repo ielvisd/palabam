@@ -4,8 +4,8 @@ uvicorn[standard]==0.34.0
 python-multipart==0.0.20
 pydantic==2.10.3
 
-# NLP for vocabulary analysis (CRITICAL - but slow to build)
-spacy>=3.7.0
+# NLP for vocabulary analysis (CRITICAL - pin versions with wheels available)
+spacy==3.7.2
 nltk==3.9.1
 wordfreq==3.0.1
 
