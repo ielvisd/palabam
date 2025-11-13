@@ -69,6 +69,36 @@
               </NuxtLink>
             </p>
           </div>
+
+          <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-center text-gray-500 dark:text-gray-400 mb-4">
+              Try demo accounts
+            </p>
+            <div class="space-y-2">
+              <UButton
+                block
+                variant="outline"
+                color="neutral"
+                :loading="demoLoading === 'teacher'"
+                :disabled="loading || demoLoading !== null"
+                @click="handleDemoLogin('teacher@gauntlet.com', 'demo123456', 'teacher')"
+              >
+                <UIcon name="i-heroicons-academic-cap" class="mr-2" />
+                Demo Teacher
+              </UButton>
+              <UButton
+                block
+                variant="outline"
+                color="neutral"
+                :loading="demoLoading === 'student'"
+                :disabled="loading || demoLoading !== null"
+                @click="handleDemoLogin('student@gauntlet.com', 'demo123456', 'student')"
+              >
+                <UIcon name="i-heroicons-user" class="mr-2" />
+                Demo Student
+              </UButton>
+            </div>
+          </div>
         </UCard>
       </div>
     </div>
@@ -76,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-const { signInWithPassword, user, getUserRole } = useAuth()
+const { signInWithPassword, user, getUserRole, getTeacherId } = useAuth()
 const router = useRouter()
 
 // Redirect if already authenticated
@@ -99,6 +129,7 @@ const form = reactive({
 })
 
 const loading = ref(false)
+const demoLoading = ref<'teacher' | 'student' | null>(null)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 
@@ -127,6 +158,14 @@ const handleLogin = async () => {
       attempts++
     }
     
+    // If role is still null, try to detect teacher by checking if teacher record exists
+    if (!role) {
+      const teacherId = await getTeacherId()
+      if (teacherId) {
+        role = 'teacher'
+      }
+    }
+    
     // Redirect based on role
     if (role === 'parent') {
       router.push('/parent/dashboard')
@@ -135,7 +174,7 @@ const handleLogin = async () => {
     } else if (role === 'teacher') {
       router.push('/dashboard')
     } else {
-      // If no role yet, redirect to home
+      // If no role yet, redirect to home (which will show appropriate UI)
       router.push('/')
     }
   } catch (err: any) {
@@ -143,6 +182,53 @@ const handleLogin = async () => {
     console.error('Login error:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const handleDemoLogin = async (email: string, password: string, accountType: 'teacher' | 'student') => {
+  demoLoading.value = accountType
+  error.value = null
+  successMessage.value = null
+
+  try {
+    await signInWithPassword(email, password)
+    
+    // Wait for session to be established
+    await nextTick()
+    
+    // Wait a bit for the reactive user to update
+    let attempts = 0
+    let role: 'student' | 'teacher' | 'admin' | 'parent' | null = null
+    while (attempts < 10 && !role) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      role = await getUserRole()
+      attempts++
+    }
+    
+    // If role is still null, try to detect teacher by checking if teacher record exists
+    if (!role) {
+      const teacherId = await getTeacherId()
+      if (teacherId) {
+        role = 'teacher'
+      }
+    }
+    
+    // Redirect based on role
+    if (role === 'parent') {
+      router.push('/parent/dashboard')
+    } else if (role === 'student') {
+      router.push('/student/dashboard')
+    } else if (role === 'teacher') {
+      router.push('/dashboard')
+    } else {
+      // If no role yet, redirect to home (which will show appropriate UI)
+      router.push('/')
+    }
+  } catch (err: any) {
+    error.value = err.message || 'Failed to sign in with demo account. Please try again.'
+    console.error('Demo login error:', err)
+  } finally {
+    demoLoading.value = null
   }
 }
 

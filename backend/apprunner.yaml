@@ -1,0 +1,20 @@
+version: 1.0
+runtime: docker
+build:
+  commands:
+    build:
+      - echo "Building Palabam Backend Docker image"
+run:
+  runtime-version: 3.9
+  command: uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}
+  network:
+    port: 8080
+    env: PORT
+  env:
+    - name: AWS_REGION
+      value: "us-east-1"
+    # Note: Add other environment variables via AWS Console or CLI
+    # SUPABASE_URL, SUPABASE_KEY, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+
+
+

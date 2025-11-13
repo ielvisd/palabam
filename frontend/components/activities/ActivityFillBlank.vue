@@ -20,16 +20,47 @@
         <div class="text-lg">
           <p class="text-center">
             {{ sentenceParts[0] }}
-            <UInput
-              v-model="userInput"
-              :placeholder="word.word"
-              size="lg"
-              :disabled="answered"
-              class="inline-block w-32 mx-2 text-center"
-              @keyup.enter="checkAnswer"
-            />
+            <span class="inline-flex items-center gap-1">
+              <UInput
+                v-model="userInput"
+                :placeholder="word.word"
+                size="lg"
+                :disabled="answered || isRecordingAudio"
+                class="inline-block w-32 text-center"
+                @keyup.enter="checkAnswer"
+              />
+              <UButton
+                v-if="!isRecordingAudio"
+                @click="handleAudioInput"
+                :disabled="answered"
+                variant="ghost"
+                color="primary"
+                size="xs"
+                class="p-1"
+                :title="'Start voice input'"
+              >
+                <UIcon name="i-heroicons-microphone" class="w-4 h-4" />
+              </UButton>
+              <UButton
+                v-else
+                @click="stopAudioRecording"
+                :disabled="answered"
+                color="red"
+                size="xs"
+                class="p-1"
+                :title="'Stop recording'"
+              >
+                <UIcon name="i-heroicons-stop-circle" class="w-4 h-4" />
+              </UButton>
+            </span>
             {{ sentenceParts[1] }}
           </p>
+        </div>
+        <div v-if="isRecordingAudio" class="text-center">
+          <div class="inline-flex items-center gap-2 text-red-600">
+            <span class="animate-pulse">●</span>
+            <span class="text-sm">Recording...</span>
+          </div>
         </div>
 
         <div v-if="answered" class="text-center space-y-4">
@@ -81,9 +112,46 @@ const emit = defineEmits<{
 
 const { speak } = useVocabInput()
 
+// Audio input composable
+const {
+  isRecording: isRecordingAudio,
+  transcript: audioTranscript,
+  getCurrentTranscript,
+  startRecording: startAudioRecording,
+  stopRecording: stopAudioRecording,
+  clearTranscript: clearAudioTranscript
+} = useAudioInput()
+
 const userInput = ref('')
 const answered = ref(false)
 const isPlaying = ref(false)
+
+// Handle audio input
+const handleAudioInput = () => {
+  startAudioRecording()
+}
+
+// Watch for transcript updates and update userInput
+watch(audioTranscript, (newTranscript) => {
+  if (newTranscript && isRecordingAudio.value) {
+    const transcriptText = newTranscript.trim()
+    if (transcriptText) {
+      // For fill-in-the-blank, replace the input with the transcript
+      userInput.value = transcriptText
+    }
+  }
+})
+
+// Watch for recording to stop and finalize any remaining transcript
+watch(isRecordingAudio, (recording) => {
+  if (!recording) {
+    const finalTranscript = getCurrentTranscript.value.trim()
+    if (finalTranscript) {
+      userInput.value = finalTranscript
+    }
+    clearAudioTranscript()
+  }
+})
 
 // Generate sentence with blank
 const sentence = computed(() => {

@@ -14,7 +14,7 @@ async def get_or_create_progress(student_id: str) -> Dict[str, Any]:
     """Get student progress or create if doesn't exist"""
     try:
         supabase = get_supabase_client()
-        result = supabase.table("student_progress").select("*").eq("student_id", student_id).single().execute()
+        result = supabase.table("student_progress").select("*").eq("student_id", student_id).maybe_single().execute()
         
         if result.data:
             return result.data

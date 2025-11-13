@@ -223,6 +223,21 @@ const { getStudentId } = useAuth()
 const studentId = ref<string | null>(null)
 const error = ref<string | null>(null)
 
+// Helper function to check if error is a connection error
+const isConnectionError = (err: any): boolean => {
+  if (!err) return false
+  const message = err.message || err.toString() || ''
+  const statusCode = err.statusCode || err.status
+  return (
+    message.includes('Failed to fetch') ||
+    message.includes('ERR_CONNECTION_REFUSED') ||
+    message.includes('NetworkError') ||
+    message.includes('network') ||
+    statusCode === 0 ||
+    (err.cause && err.cause.code === 'ECONNREFUSED')
+  )
+}
+
 // Fetch all data
 const fetchData = async () => {
   if (!studentId.value) return
@@ -234,20 +249,40 @@ const fetchData = async () => {
     const progressRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/progress`)
     progress.value = progressRes
 
-    // Fetch recommendations
-    const recRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/recommendations`)
-    recommendedWords.value = recRes.recommended_words || []
+    // Fetch recommendations (optional - don't fail if this fails)
+    try {
+      const recRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/recommendations`)
+      recommendedWords.value = recRes.recommended_words || []
+    } catch (err) {
+      console.warn('Could not fetch recommendations:', err)
+      recommendedWords.value = []
+    }
 
-    // Fetch achievements
-    const achievementsRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/achievements`)
-    achievements.value = achievementsRes.achievements || []
+    // Fetch achievements (optional - don't fail if this fails)
+    try {
+      const achievementsRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/achievements`)
+      achievements.value = achievementsRes.achievements || []
+    } catch (err) {
+      console.warn('Could not fetch achievements:', err)
+      achievements.value = []
+    }
 
-    // Fetch submissions
-    const submissionsRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/submissions`)
-    submissions.value = submissionsRes.submissions || []
+    // Fetch submissions (optional - don't fail if this fails)
+    try {
+      const submissionsRes = await $fetch(`${apiUrl}/api/students/${studentId.value}/submissions`)
+      submissions.value = submissionsRes.submissions || []
+    } catch (err) {
+      console.warn('Could not fetch submissions:', err)
+      submissions.value = []
+    }
   } catch (err: any) {
     console.error('Failed to fetch data:', err)
-    error.value = err.message || 'Failed to load dashboard data. Please try again.'
+    
+    if (isConnectionError(err)) {
+      error.value = `Unable to connect to the backend API at ${apiUrl}. Please ensure the backend server is running.`
+    } else {
+      error.value = err.data?.detail || err.message || 'Failed to load dashboard data. Please try again.'
+    }
   } finally {
     loading.value = false
   }
@@ -327,10 +362,6 @@ const formatDate = (dateString: string) => {
     year: 'numeric'
   }).format(new Date(dateString))
 }
-
-onMounted(() => {
-  fetchData()
-})
 
 useHead({
   title: 'My Progress - Palabam'

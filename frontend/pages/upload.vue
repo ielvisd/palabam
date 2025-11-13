@@ -132,7 +132,7 @@
               ]"
             >
               <!-- Text Input Area -->
-              <div class="p-6">
+              <div class="p-6 relative">
                 <ClientOnly>
                   <UTextarea
                     v-model="form.transcript"
@@ -140,7 +140,7 @@
                       ? 'Paste or type the student writing sample here, or drag and drop a file...' 
                       : 'Paste or type the transcript here, or drag and drop a file...'"
                     :rows="16"
-                    :disabled="loading || extractingText"
+                    :disabled="loading || extractingText || isRecordingAudio"
                     autoresize
                     :maxrows="30"
                     size="lg"
@@ -152,11 +152,41 @@
                         ? 'Paste or type the student writing sample here, or drag and drop a file...' 
                         : 'Paste or type the transcript here, or drag and drop a file...'"
                       :rows="16"
-                      :disabled="loading || extractingText"
+                      :disabled="loading || extractingText || isRecordingAudio"
                       class="resize-none min-h-[400px] text-base w-full rounded-md border-0 appearance-none placeholder:text-gray-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-3 py-2 text-sm gap-2 text-highlighted bg-default ring ring-inset ring-accented resize-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                     />
                   </template>
                 </ClientOnly>
+                <!-- Microphone button (only for writing mode) -->
+                <div v-if="inputType === 'writing'" class="absolute top-8 right-8">
+                  <UButton
+                    v-if="!isRecordingAudio"
+                    @click="handleAudioInput"
+                    :disabled="loading || extractingText"
+                    variant="ghost"
+                    color="primary"
+                    size="sm"
+                    :title="'Start voice input'"
+                  >
+                    <UIcon name="i-heroicons-microphone" class="w-5 h-5" />
+                  </UButton>
+                  <UButton
+                    v-else
+                    @click="stopAudioRecording"
+                    :disabled="loading || extractingText"
+                    color="red"
+                    size="sm"
+                    :title="'Stop recording'"
+                  >
+                    <UIcon name="i-heroicons-stop-circle" class="w-5 h-5" />
+                  </UButton>
+                </div>
+                <div v-if="isRecordingAudio && inputType === 'writing'" class="absolute bottom-8 right-8">
+                  <div class="inline-flex items-center gap-2 text-red-600 bg-white dark:bg-gray-800 px-2 py-1 rounded">
+                    <span class="animate-pulse">●</span>
+                    <span class="text-sm">Recording...</span>
+                  </div>
+                </div>
               </div>
               
               <!-- File Upload Overlay/Button -->
@@ -462,6 +492,18 @@ const { getTeacherId } = useAuth()
 const config = useRuntimeConfig()
 const apiUrl = config.public.apiUrl || 'http://localhost:8000'
 const router = useRouter()
+const route = useRoute()
+
+// Audio input composable (for writing mode only)
+const {
+  isRecording: isRecordingAudio,
+  transcript: audioTranscript,
+  getCurrentTranscript,
+  error: audioError,
+  startRecording: startAudioRecording,
+  stopRecording: stopAudioRecording,
+  clearTranscript: clearAudioTranscript
+} = useAudioInput()
 
 // Form state - use reactive for component-local state
 // Reset on mount to prevent hydration mismatches
@@ -716,6 +758,39 @@ const detectSpeakers = async () => {
   }
 }
 
+// Handle audio input
+const handleAudioInput = () => {
+  startAudioRecording()
+}
+
+// Watch for transcript updates and append to form.transcript
+watch(audioTranscript, (newTranscript) => {
+  if (newTranscript && isRecordingAudio.value && inputType.value === 'writing') {
+    // When we get a new final transcript segment, append it to form.transcript
+    const currentText = form.transcript.trim()
+    const transcriptText = newTranscript.trim()
+    if (transcriptText && !currentText.endsWith(transcriptText)) {
+      // Append new transcript with a space
+      form.transcript = currentText ? `${currentText} ${transcriptText}` : transcriptText
+    }
+  }
+})
+
+// Watch for recording to stop and finalize any remaining transcript
+watch(isRecordingAudio, (recording) => {
+  if (!recording && inputType.value === 'writing') {
+    // When recording stops, append any final transcript
+    const finalTranscript = getCurrentTranscript.value.trim()
+    if (finalTranscript) {
+      const currentText = form.transcript.trim()
+      if (finalTranscript && !currentText.endsWith(finalTranscript)) {
+        form.transcript = currentText ? `${currentText} ${finalTranscript}` : finalTranscript
+      }
+    }
+    clearAudioTranscript()
+  }
+})
+
 // Watch for content changes in transcript mode
 watch([() => form.transcript, () => extractedText, () => inputType], () => {
   if (inputType.value === 'transcript' && (form.transcript || extractedText.value)) {
@@ -744,7 +819,7 @@ const fetchClasses = async () => {
 }
 
 // Fetch students for selected class
-const onClassChange = async (classId: string) => {
+const onClassChange = async (classId: string, preselectedStudentId?: string) => {
   if (!classId) {
     students.value = []
     form.studentId = ''
@@ -755,7 +830,17 @@ const onClassChange = async (classId: string) => {
   try {
     const response = await $fetch(`${apiUrl}/api/students/class/${classId}`) as any
     students.value = response.students || []
-    form.studentId = ''
+    // Set studentId if provided and student exists in the list
+    if (preselectedStudentId) {
+      const studentExists = students.value.some(s => s.id === preselectedStudentId)
+      if (studentExists) {
+        form.studentId = preselectedStudentId
+      } else {
+        form.studentId = ''
+      }
+    } else {
+      form.studentId = ''
+    }
   } catch (err: any) {
     console.error('Error fetching students:', err)
     error.value = 'Failed to load students. Please try again.'
@@ -811,6 +896,7 @@ const resetForm = () => {
   result.value = null
   error.value = null
   successMessage.value = null
+  clearAudioTranscript()
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -853,7 +939,7 @@ const getRelicTypeLabel = (type?: string) => {
   return labels[type || ''] || 'Basic'
 }
 
-onMounted(() => {
+onMounted(async () => {
   // Reset form state on mount to ensure clean state
   form.transcript = ''
   form.classId = ''
@@ -861,7 +947,23 @@ onMounted(() => {
   extractedText.value = ''
   detectedSpeakers.value = []
   selectedSpeaker.value = ''
-  fetchClasses()
+  
+  // Fetch classes first
+  await fetchClasses()
+  
+  // Check for query parameters to auto-fill class and student
+  const classIdParam = route.query.classId as string | undefined
+  const studentIdParam = route.query.studentId as string | undefined
+  
+  if (classIdParam) {
+    // Verify the class exists in the loaded classes
+    const classExists = classes.value.some(c => c.id === classIdParam)
+    if (classExists) {
+      form.classId = classIdParam
+      // Load students for this class and optionally pre-select student
+      await onClassChange(classIdParam, studentIdParam)
+    }
+  }
 })
 
 useHead({

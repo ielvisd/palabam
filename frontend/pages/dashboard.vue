@@ -28,6 +28,18 @@
         </div>
       </div>
 
+      <!-- Backend Connection Error -->
+      <UAlert
+        v-if="backendError"
+        color="red"
+        variant="soft"
+        title="Backend API Unavailable"
+        :description="backendError"
+        icon="i-heroicons-exclamation-triangle"
+        class="mb-6"
+        @close="backendError = null"
+      />
+
       <!-- Quick Stats -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <UCard class="bg-primary/5 border-primary/20">
@@ -139,84 +151,126 @@
             </div>
 
             <!-- Students List -->
-            <div v-else-if="filteredStudents.length > 0" class="space-y-4">
+            <div v-else-if="filteredStudents.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <UCard
           v-for="student in filteredStudents"
           :key="student.id"
-          class="hover:shadow-lg transition-all duration-200"
-          :class="{ 'ring-2 ring-primary': expandedStudents.has(student.id) }"
+          class="hover:shadow-xl hover:scale-[1.02] transition-all duration-300 cursor-pointer border-l-4"
+          :class="[
+            { 'ring-2 ring-primary': expandedStudents.has(student.id) },
+            getLevelBorderClass(student.vocabulary_level)
+          ]"
+          @click="toggleStudent(student.id)"
         >
-          <template #header>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-4 flex-1">
-                <div class="flex-1">
-                  <div class="flex items-center gap-3 mb-2">
-                    <h3 class="text-xl font-semibold text-navy dark:text-white">{{ student.name }}</h3>
-                    <div class="flex items-center gap-2">
-                      <UBadge
-                        :color="getLevelColor(student.vocabulary_level)"
-                        variant="soft"
-                        size="lg"
-                      >
-                        {{ formatVocabularyLevel(student.vocabulary_level) }}
-                      </UBadge>
-                      <span v-if="student.vocabulary_level" class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ getVocabularyLevelContext(student.vocabulary_level) }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
-                    <span class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-light-bulb" class="text-teal-700" />
-                      {{ getRecommendationCount(student) }} words
-                    </span>
-                    <span class="flex items-center gap-1">
-                      <UIcon name="i-heroicons-calendar" />
-                      {{ formatDate(student.last_profile_date) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
+          <div class="p-6 space-y-4">
+            <!-- Header Section -->
+            <div class="space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="text-xl font-bold text-navy dark:text-white leading-tight">{{ student.name }}</h3>
                 <UButton
-                  :to="`/students/${student.id}`"
+                  @click.stop="navigateTo(`/students/${student.id}`)"
                   variant="ghost"
                   color="neutral"
-                  size="sm"
+                  size="xs"
                   icon="i-heroicons-arrow-top-right-on-square"
-                >
-                  View Details
-                </UButton>
-                <UButton
-                  @click="toggleStudent(student.id)"
-                  variant="ghost"
-                  color="neutral"
-                  size="sm"
-                  :icon="expandedStudents.has(student.id) ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'"
+                  class="flex-shrink-0"
                 />
               </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <UBadge
+                  :color="getLevelColor(student.vocabulary_level)"
+                  variant="soft"
+                  size="sm"
+                >
+                  {{ formatVocabularyLevel(student.vocabulary_level) }}
+                </UBadge>
+                <span v-if="student.vocabulary_level" class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ getVocabularyLevelContext(student.vocabulary_level) }}
+                </span>
+              </div>
             </div>
-          </template>
+
+            <!-- Stats Section -->
+            <div class="flex items-center gap-4 text-sm">
+              <span class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                <UIcon name="i-heroicons-light-bulb" class="text-teal-600 dark:text-teal-400 w-4 h-4" />
+                <span class="font-semibold">{{ getRecommendationCount(student) }}</span>
+                <span class="text-gray-500">words</span>
+              </span>
+              <span class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+                <UIcon name="i-heroicons-calendar" class="text-gray-400 w-4 h-4" />
+                <span class="text-xs">{{ formatDate(student.last_profile_date) }}</span>
+              </span>
+            </div>
+
+            <!-- Word Preview Section -->
+            <div v-if="student.recommended_words && student.recommended_words.length > 0" class="space-y-2">
+              <div class="flex items-center gap-2 flex-wrap">
+                <UBadge
+                  v-for="(word, idx) in getPreviewWords(student.recommended_words)"
+                  :key="typeof word === 'string' ? word : word.word"
+                  :color="getRelicTypeColor(typeof word === 'string' ? undefined : word.relic_type)"
+                  variant="soft"
+                  size="xs"
+                  class="text-xs font-medium"
+                >
+                  {{ typeof word === 'string' ? word : word.word }}
+                </UBadge>
+                <span 
+                  v-if="getRecommendationCount(student) > 5" 
+                  class="text-xs text-gray-500 dark:text-gray-400 font-medium"
+                >
+                  +{{ getRecommendationCount(student) - 5 }} more
+                </span>
+              </div>
+            </div>
+            <div v-else class="text-center py-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p class="text-xs text-gray-500 dark:text-gray-400">No words yet</p>
+            </div>
+
+            <!-- Action Section -->
+            <div class="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
+              <UButton
+                @click.stop="navigateToAssess(student)"
+                block
+                color="primary"
+                size="sm"
+                icon="i-heroicons-magnifying-glass"
+              >
+                Assess
+              </UButton>
+              <UButton
+                @click.stop="navigateTo(`/students/${student.id}`)"
+                block
+                variant="outline"
+                color="primary"
+                size="sm"
+                icon="i-heroicons-arrow-top-right-on-square"
+              >
+                View Details
+              </UButton>
+            </div>
+          </div>
 
           <!-- Expanded Recommendations -->
-          <div v-if="expandedStudents.has(student.id)" class="space-y-6 pt-4 border-t">
+          <div v-if="expandedStudents.has(student.id)" class="px-6 pb-6 space-y-6 pt-4 border-t border-gray-200 dark:border-gray-700">
             <!-- Recommended Words -->
             <div v-if="student.recommended_words && student.recommended_words.length > 0">
               <h4 class="font-semibold text-lg text-navy dark:text-white mb-4 flex items-center gap-2">
-                <UIcon name="i-heroicons-sparkles" class="text-teal-700" />
+                <UIcon name="i-heroicons-sparkles" class="text-teal-700 dark:text-teal-400" />
                 Recommended Words ({{ student.recommended_words.length }})
               </h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
                 <UCard
                   v-for="word in student.recommended_words"
                   :key="typeof word === 'string' ? word : word.word"
-                  class="p-4 hover:shadow-md transition-shadow border-l-4"
+                  class="p-5 hover:shadow-md transition-shadow border-l-4"
                   :class="getWordCardBorderClass(word)"
                 >
-                  <div class="space-y-3">
+                  <div class="space-y-4">
                     <div class="flex items-start justify-between">
                       <div class="flex-1">
-                        <h5 class="font-bold text-lg text-navy dark:text-white mb-1">
+                        <h5 class="font-bold text-xl text-navy dark:text-white mb-2 leading-tight">
                           {{ typeof word === 'string' ? word : word.word }}
                         </h5>
                         <div class="flex items-center gap-2 flex-wrap">
@@ -243,16 +297,16 @@
                       </div>
                     </div>
                     
-                    <p v-if="typeof word !== 'string' && word.definition" class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                    <p v-if="typeof word !== 'string' && word.definition" class="text-base text-gray-700 dark:text-gray-300 leading-relaxed">
                       {{ word.definition }}
                     </p>
                     
-                    <p v-if="typeof word !== 'string' && word.example" class="text-sm text-gray-600 dark:text-gray-400 italic border-l-2 border-primary pl-3 py-1 bg-gray-50 dark:bg-gray-800 rounded">
+                    <p v-if="typeof word !== 'string' && word.example" class="text-sm text-gray-600 dark:text-gray-400 italic border-l-2 border-primary pl-3 py-2 bg-gray-50 dark:bg-gray-800 rounded leading-relaxed">
                       "{{ word.example }}"
                     </p>
                     
-                    <div v-if="typeof word !== 'string' && word.rationale" class="text-xs text-gray-600 dark:text-gray-300 bg-teal/10 dark:bg-teal/20 p-2 rounded flex items-start gap-2">
-                      <UIcon name="i-heroicons-light-bulb" class="text-teal-700 mt-0.5 flex-shrink-0" />
+                    <div v-if="typeof word !== 'string' && word.rationale" class="text-sm text-gray-600 dark:text-gray-300 bg-teal/10 dark:bg-teal/20 p-3 rounded flex items-start gap-2 leading-relaxed">
+                      <UIcon name="i-heroicons-light-bulb" class="text-teal-700 dark:text-teal-400 mt-0.5 flex-shrink-0" />
                       <span>{{ word.rationale }}</span>
                     </div>
                   </div>
@@ -749,6 +803,7 @@ interface Student {
     rationale?: string
   }>
   last_profile_date?: string
+  classId?: string
   profiles?: Array<{
     id: string
     created_at: string
@@ -774,6 +829,7 @@ const showClassCreatedModal = ref(false)
 const newClassName = ref('')
 const creatingClass = ref(false)
 const createClassError = ref<string | null>(null)
+const backendError = ref<string | null>(null)
 
 // Dashboard tabs
 const selectedTab = ref('students')
@@ -892,16 +948,36 @@ watch(showRemoveStudentModal, (isOpen) => {
   }
 })
 
+// Helper function to check if error is a connection error
+const isConnectionError = (err: any): boolean => {
+  if (!err) return false
+  const message = err.message || err.toString() || ''
+  const statusCode = err.statusCode || err.status
+  return (
+    message.includes('Failed to fetch') ||
+    message.includes('ERR_CONNECTION_REFUSED') ||
+    message.includes('NetworkError') ||
+    message.includes('network') ||
+    statusCode === 0 ||
+    (err.cause && err.cause.code === 'ECONNREFUSED')
+  )
+}
+
 // Fetch classes
 const fetchClasses = async () => {
   loadingClasses.value = true
+  backendError.value = null
   try {
     if (!teacherId.value) return
     const response = await $fetch(`${apiUrl}/api/classes/teacher/${teacherId.value}`) as any
     classes.value = response.classes || []
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error fetching classes:', err)
     classes.value = []
+    
+    if (isConnectionError(err)) {
+      backendError.value = `Unable to connect to the backend API at ${apiUrl}. Please ensure the backend server is running.`
+    }
   } finally {
     loadingClasses.value = false
   }
@@ -924,9 +1000,13 @@ const fetchClassStudentCounts = async () => {
     try {
       const response = await $fetch(`${apiUrl}/api/students/class/${classItem.id}`) as any
       counts.set(classItem.id, (response.students || []).length)
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error fetching student count for class ${classItem.id}:`, err)
       counts.set(classItem.id, 0)
+      
+      if (isConnectionError(err) && !backendError.value) {
+        backendError.value = `Unable to connect to the backend API at ${apiUrl}. Please ensure the backend server is running.`
+      }
     }
   }
   classStudentCounts.value = counts
@@ -960,9 +1040,13 @@ const fetchClassStudents = async (classId: string) => {
     classStudents.value = response.students || []
     // Update the count in our map
     classStudentCounts.value.set(classId, classStudents.value.length)
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error fetching class students:', err)
     classStudents.value = []
+    
+    if (isConnectionError(err) && !backendError.value) {
+      backendError.value = `Unable to connect to the backend API at ${apiUrl}. Please ensure the backend server is running.`
+    }
   } finally {
     loadingClassStudents.value = false
   }
@@ -1050,6 +1134,7 @@ const copyLink = async () => {
 // Fetch students and recommendations
 const fetchStudents = async () => {
   loading.value = true
+  backendError.value = null
   try {
     if (!teacherId.value) return
     
@@ -1070,6 +1155,7 @@ const fetchStudents = async () => {
               vocabulary_level: undefined,
               recommended_words: [],
               last_profile_date: undefined,
+              classId: classItem.id,
               profiles: []
             })
           }
@@ -1113,6 +1199,10 @@ const fetchStudents = async () => {
   } catch (err: any) {
     console.error('Error fetching students:', err)
     students.value = []
+    
+    if (isConnectionError(err) && !backendError.value) {
+      backendError.value = `Unable to connect to the backend API at ${apiUrl}. Please ensure the backend server is running.`
+    }
   } finally {
     loading.value = false
   }
@@ -1496,6 +1586,54 @@ const getRelicTypeLabel = (type?: string) => {
     thunder: 'Advanced'
   }
   return labels[type] || 'Basic'
+}
+
+// Get preview words (first 5)
+const getPreviewWords = (words?: Array<string | {
+  word: string
+  definition?: string
+  example?: string
+  relic_type?: string
+  difficulty_score?: number
+  rationale?: string
+}>) => {
+  if (!words || words.length === 0) return []
+  return words.slice(0, 5)
+}
+
+// Get border color class based on vocabulary level
+const getLevelBorderClass = (level?: string): string => {
+  if (!level) return 'border-l-gray-300'
+  const colors: Record<string, string> = {
+    'K-1': 'border-l-primary-500',
+    '2-3': 'border-l-primary-500',
+    '4-5': 'border-l-teal-500',
+    '6-7': 'border-l-teal-500',
+    '8-9': 'border-l-yellow-500',
+    '10-11': 'border-l-yellow-500',
+    '12+': 'border-l-pink-500',
+    // Legacy support
+    beginner: 'border-l-primary-500',
+    intermediate: 'border-l-teal-500',
+    advanced: 'border-l-yellow-500',
+    expert: 'border-l-pink-500'
+  }
+  return colors[level] || 'border-l-gray-300'
+}
+
+// Navigation helper
+const router = useRouter()
+const navigateTo = (path: string) => {
+  router.push(path)
+}
+
+const navigateToAssess = (student: Student) => {
+  if (student.classId) {
+    router.push(`/upload?classId=${student.classId}&studentId=${student.id}`)
+  } else {
+    // Fallback to upload page without pre-fill if classId is missing
+    router.push('/upload')
+  }
 }
 
 useHead({

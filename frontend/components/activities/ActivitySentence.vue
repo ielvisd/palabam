@@ -11,14 +11,43 @@
           </p>
         </div>
 
-        <div>
+        <div class="relative">
           <UTextarea
             v-model="userSentence"
             placeholder="Type your sentence here..."
             :rows="4"
             size="xl"
-            :disabled="submitted"
+            :disabled="submitted || isRecordingAudio"
           />
+          <UButton
+            v-if="!isRecordingAudio"
+            @click="handleAudioInput"
+            :disabled="submitted"
+            variant="ghost"
+            color="primary"
+            size="sm"
+            class="absolute top-2 right-2"
+            :title="'Start voice input'"
+          >
+            <UIcon name="i-heroicons-microphone" class="w-5 h-5" />
+          </UButton>
+          <UButton
+            v-else
+            @click="stopAudioRecording"
+            :disabled="submitted"
+            color="red"
+            size="sm"
+            class="absolute top-2 right-2"
+            :title="'Stop recording'"
+          >
+            <UIcon name="i-heroicons-stop-circle" class="w-5 h-5" />
+          </UButton>
+        </div>
+        <div v-if="isRecordingAudio" class="text-center">
+          <div class="inline-flex items-center gap-2 text-red-600">
+            <span class="animate-pulse">●</span>
+            <span class="text-sm">Recording...</span>
+          </div>
         </div>
 
         <div v-if="submitted" class="space-y-4">
@@ -81,11 +110,51 @@ const emit = defineEmits<{
 
 const { speak } = useVocabInput()
 
+// Audio input composable
+const {
+  isRecording: isRecordingAudio,
+  transcript: audioTranscript,
+  getCurrentTranscript,
+  startRecording: startAudioRecording,
+  stopRecording: stopAudioRecording,
+  clearTranscript: clearAudioTranscript
+} = useAudioInput()
+
 const userSentence = ref('')
 const submitted = ref(false)
 const scoring = ref(false)
 const score = ref(0)
 const feedback = ref('')
+
+// Handle audio input
+const handleAudioInput = () => {
+  startAudioRecording()
+}
+
+// Watch for transcript updates and append to userSentence
+watch(audioTranscript, (newTranscript) => {
+  if (newTranscript && isRecordingAudio.value) {
+    const currentText = userSentence.value.trim()
+    const transcriptText = newTranscript.trim()
+    if (transcriptText && !currentText.endsWith(transcriptText)) {
+      userSentence.value = currentText ? `${currentText} ${transcriptText}` : transcriptText
+    }
+  }
+})
+
+// Watch for recording to stop and finalize any remaining transcript
+watch(isRecordingAudio, (recording) => {
+  if (!recording) {
+    const finalTranscript = getCurrentTranscript.value.trim()
+    if (finalTranscript) {
+      const currentText = userSentence.value.trim()
+      if (finalTranscript && !currentText.endsWith(finalTranscript)) {
+        userSentence.value = currentText ? `${currentText} ${finalTranscript}` : finalTranscript
+      }
+    }
+    clearAudioTranscript()
+  }
+})
 
 const submitSentence = async () => {
   if (!userSentence.value.trim()) return

@@ -176,20 +176,76 @@
 </template>
 
 <script setup lang="ts">
-const { user, getUserRole } = useAuth()
+const { user, getUserRole, getTeacherId } = useAuth()
 const userRole = ref<'parent' | 'student' | 'teacher' | 'admin' | null>(null)
 
-// Fetch user role
+// Fetch user role and redirect if needed
 onMounted(async () => {
   if (user.value) {
-    userRole.value = await getUserRole()
+    // Try to get role with retries (similar to login page)
+    let role = await getUserRole()
+    let attempts = 0
+    
+    // If no role, try a few more times (might be creating user record)
+    while (!role && attempts < 5) {
+      await new Promise(resolve => setTimeout(resolve, 200))
+      role = await getUserRole()
+      attempts++
+    }
+    
+    // If still no role, try to detect teacher by checking teacher record
+    if (!role) {
+      const teacherId = await getTeacherId()
+      if (teacherId) {
+        role = 'teacher'
+      }
+    }
+    
+    userRole.value = role
+    
+    // Auto-redirect authenticated users to their dashboard
+    if (role === 'parent') {
+      await navigateTo('/parent/dashboard')
+    } else if (role === 'student') {
+      await navigateTo('/student/dashboard')
+    } else if (role === 'teacher') {
+      await navigateTo('/dashboard')
+    }
   }
 })
 
 // Watch for auth changes
 watch(user, async (newUser) => {
   if (newUser) {
-    userRole.value = await getUserRole()
+    // Try to get role with retries (similar to login page)
+    let role = await getUserRole()
+    let attempts = 0
+    
+    // If no role, try a few more times (might be creating user record)
+    while (!role && attempts < 5) {
+      await new Promise(resolve => setTimeout(resolve, 200))
+      role = await getUserRole()
+      attempts++
+    }
+    
+    // If still no role, try to detect teacher by checking teacher record
+    if (!role) {
+      const teacherId = await getTeacherId()
+      if (teacherId) {
+        role = 'teacher'
+      }
+    }
+    
+    userRole.value = role
+    
+    // Auto-redirect authenticated users to their dashboard
+    if (role === 'parent') {
+      await navigateTo('/parent/dashboard')
+    } else if (role === 'student') {
+      await navigateTo('/student/dashboard')
+    } else if (role === 'teacher') {
+      await navigateTo('/dashboard')
+    }
   } else {
     userRole.value = null
   }

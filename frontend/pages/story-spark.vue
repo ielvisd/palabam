@@ -2,28 +2,9 @@
   <UContainer class="py-8">
     <UCard>
       <template #header>
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-3xl font-bold">Story Spark</h1>
-            <p class="text-gray-600 mt-2">Tell me a story, and I'll help you discover new words!</p>
-          </div>
-          <div class="flex items-center gap-4">
-            <USwitch
-              v-model="isVoiceMode"
-              @update:model-value="toggleInputMode"
-              label="Voice Mode"
-              color="primary"
-            />
-            <UButton
-              v-if="isVoiceMode"
-              @click="toggleTranscriptionMode"
-              variant="ghost"
-              color="neutral"
-              size="sm"
-            >
-              {{ isRealTimeMode ? 'Real-time' : 'Record' }}
-            </UButton>
-          </div>
+        <div>
+          <h1 class="text-3xl font-bold">Story Spark</h1>
+          <p class="text-gray-600 mt-2">Tell me a story, and I'll help you discover new words!</p>
         </div>
       </template>
 
@@ -120,61 +101,48 @@
 
       <!-- Input Section -->
       <div class="space-y-4">
-        <!-- Voice Mode -->
-        <div v-if="isVoiceMode" class="space-y-4">
-          <div class="flex items-center gap-4">
-            <UButton
-              :color="isRecording ? 'red' : 'primary'"
-              :disabled="isProcessing"
-              @click="handleVoiceInput"
+        <div class="w-full">
+          <div class="relative">
+            <UTextarea
+              v-model="textInput"
+              placeholder="Type your story here... Be creative and use your own words!"
+              :rows="10"
               size="xl"
-              class="flex-1"
+              :disabled="isProcessing || isRecordingAudio"
+              block
+              class="font-sans w-full"
+              :ui="{ base: 'w-full' }"
+            />
+            <UButton
+              v-if="!isRecordingAudio"
+              @click="handleAudioInput"
+              :disabled="isProcessing"
+              variant="ghost"
+              color="primary"
+              size="sm"
+              class="absolute top-2 right-2"
+              :title="'Start voice input'"
             >
-              <template v-if="isRecording">
-                <UIcon name="i-heroicons-stop-circle" class="mr-2" />
-                Stop {{ isRealTimeMode ? 'Recording' : 'Recording' }}
-              </template>
-              <template v-else>
-                <UIcon name="i-heroicons-microphone" class="mr-2" />
-                Start {{ isRealTimeMode ? 'Speaking' : 'Recording' }}
-              </template>
+              <UIcon name="i-heroicons-microphone" class="w-5 h-5" />
+            </UButton>
+            <UButton
+              v-else
+              @click="stopAudioRecording"
+              :disabled="isProcessing"
+              color="red"
+              size="sm"
+              class="absolute top-2 right-2"
+              :title="'Stop recording'"
+            >
+              <UIcon name="i-heroicons-stop-circle" class="w-5 h-5" />
             </UButton>
           </div>
-          
-          <div v-if="isRecording" class="text-center">
+          <div v-if="isRecordingAudio" class="mt-2 text-center">
             <div class="inline-flex items-center gap-2 text-red-600">
               <span class="animate-pulse">●</span>
-              <span>{{ isRealTimeMode ? 'Listening...' : 'Recording...' }}</span>
+              <span>Recording...</span>
             </div>
           </div>
-
-          <!-- Real-time transcript display -->
-          <div v-if="displayTranscript || interimTranscript" class="mt-4 p-4 bg-gray-50 rounded-lg min-h-[100px]">
-            <p class="text-sm text-gray-600 mb-1">Your story:</p>
-            <p class="text-base whitespace-pre-wrap">
-              {{ transcript }}
-              <span v-if="interimTranscript" class="text-gray-400 italic">
-                {{ interimTranscript }}
-              </span>
-            </p>
-            <p v-if="wordCount > 0" class="text-xs text-gray-600 mt-2">
-              {{ wordCount }} words
-            </p>
-          </div>
-        </div>
-
-        <!-- Text Mode -->
-        <div v-else class="w-full">
-          <UTextarea
-            v-model="textInput"
-            placeholder="Type your story here... Be creative and use your own words!"
-            :rows="10"
-            size="xl"
-            :disabled="isProcessing"
-            block
-            class="font-sans w-full"
-            :ui="{ base: 'w-full' }"
-          />
           <p class="text-xs text-gray-600 mt-2">
             {{ textInput.length }} characters • {{ wordCount }} words
           </p>
@@ -182,12 +150,12 @@
 
         <!-- Error Display -->
         <UAlert
-          v-if="error"
+          v-if="error || audioError"
           color="red"
           variant="soft"
-          :title="error"
+          :title="error || audioError"
           class="mt-4"
-          @close="error = null"
+          @close="error = null; audioError = null"
         />
 
         <!-- Submit Button -->
@@ -353,21 +321,20 @@ const selectedStudentId = ref<string | null>(null)
 const availableStudents = ref<Array<{ id: string; name: string; classes?: Array<{ id: string; name: string }> }>>([])
 const loadingStudents = ref(false)
 
+// Audio input composable
 const {
-  isVoiceMode,
-  isRecording,
-  isRealTimeMode,
-  transcript,
-  interimTranscript,
-  displayTranscript,
-  error,
-  startRecording,
-  stopRecording,
-  toggleInputMode,
-  toggleTranscriptionMode
-} = useStorySpark()
+  isRecording: isRecordingAudio,
+  transcript: audioTranscript,
+  interimTranscript: audioInterimTranscript,
+  getCurrentTranscript,
+  error: audioError,
+  startRecording: startAudioRecording,
+  stopRecording: stopAudioRecording,
+  clearTranscript: clearAudioTranscript
+} = useAudioInput()
 
 const textInput = ref('')
+const error = ref<string | null>(null)
 const isProcessing = ref(false)
 const processingProgress = ref(0)
 const processingStatus = ref('')
@@ -482,6 +449,7 @@ const fetchTeacherStudents = async () => {
   } catch (err) {
     console.error('Error fetching teacher students:', err)
     error.value = 'Failed to load students. Please refresh the page.'
+    audioError.value = null
   } finally {
     loadingStudents.value = false
   }
@@ -499,10 +467,6 @@ const getSelectedStudentClasses = () => {
 }
 
 const wordCount = computed(() => {
-  if (isVoiceMode.value) {
-    const fullText = transcript.value + (interimTranscript.value || '')
-    return fullText.trim().split(/\s+/).filter(word => word.length > 0).length
-  }
   return textInput.value.trim().split(/\s+/).filter(word => word.length > 0).length
 })
 
@@ -513,20 +477,41 @@ const canSubmit = computed(() => {
   }
   
   // Check input content
-  if (isVoiceMode.value) {
-    return transcript.value.trim().length > 0 && wordCount.value >= 10
-  }
   return textInput.value.trim().length > 0 && wordCount.value >= 10
 })
 
-
-const handleVoiceInput = () => {
-  if (isRecording.value) {
-    stopRecording()
-  } else {
-    startRecording()
-  }
+// Handle audio input
+const handleAudioInput = () => {
+  startAudioRecording()
 }
+
+// Watch for transcript updates and append to textInput
+watch(audioTranscript, (newTranscript) => {
+  if (newTranscript && isRecordingAudio.value) {
+    // When we get a new final transcript segment, append it to textInput
+    const currentText = textInput.value.trim()
+    const transcriptText = newTranscript.trim()
+    if (transcriptText && !currentText.endsWith(transcriptText)) {
+      // Append new transcript with a space
+      textInput.value = currentText ? `${currentText} ${transcriptText}` : transcriptText
+    }
+  }
+})
+
+// Watch for recording to stop and finalize any remaining transcript
+watch(isRecordingAudio, (recording) => {
+  if (!recording) {
+    // When recording stops, append any final transcript
+    const finalTranscript = getCurrentTranscript.value.trim()
+    if (finalTranscript) {
+      const currentText = textInput.value.trim()
+      if (finalTranscript && !currentText.endsWith(finalTranscript)) {
+        textInput.value = currentText ? `${currentText} ${finalTranscript}` : finalTranscript
+      }
+    }
+    clearAudioTranscript()
+  }
+})
 
 const submitStory = async () => {
   if (!canSubmit.value) return
@@ -536,7 +521,7 @@ const submitStory = async () => {
   processingStatus.value = 'Preparing your story...'
 
   try {
-    const inputText = isVoiceMode.value ? transcript.value : textInput.value
+    const inputText = textInput.value
 
     // Get student ID based on user role
     let studentId: string | null = null
@@ -575,7 +560,7 @@ const submitStory = async () => {
       body: {
         transcript: inputText,
         student_id: studentId,
-        inputMode: isVoiceMode.value ? 'voice' : 'text'
+        inputMode: 'text'
       }
     }) as any
 
@@ -592,7 +577,7 @@ const submitStory = async () => {
         student_id: studentId,
         type: 'story-spark',
         content: inputText,
-        source: isVoiceMode.value ? 'voice' : 'text'
+        source: 'text'
       }
     })
 
@@ -639,8 +624,7 @@ const submitStory = async () => {
 const startNewStory = () => {
   submissionResult.value = null
   textInput.value = ''
-  transcript.value = ''
-  interimTranscript.value = ''
+  clearAudioTranscript()
   currentPrompt.value = prompts[Math.floor(Math.random() * prompts.length)]
 }
 
