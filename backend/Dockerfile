@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for better Docker layer caching)
-COPY requirements.txt .
+# Use minimal requirements for faster builds
+COPY requirements.minimal.txt requirements.txt
 
 # Install Python dependencies with no cache and pip upgrade
 RUN pip install --no-cache-dir --upgrade pip && \

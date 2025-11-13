@@ -1,0 +1,18 @@
+# Core web framework
+fastapi==0.116.0
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.3
+
+# NLP for vocabulary analysis (CRITICAL - but slow to build)
+spacy>=3.7.0
+nltk==3.9.1
+wordfreq==3.0.1
+
+# Database
+supabase==2.9.1
+httpx>=0.26,<0.28
+
+# Configuration
+python-dotenv==1.0.1
+
